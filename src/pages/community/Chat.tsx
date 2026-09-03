@@ -2,12 +2,15 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useDemoStore } from '../../store/useDemoStore'
 import { ME_ID } from '../../lib/seed'
+import { anonymousPalLabels } from '../../lib/palLabel'
 import { Avatar } from '../../components/ui/Avatar'
 import { AnonymousAvatar } from '../../components/ui/AnonymousAvatar'
 import { Button } from '../../components/ui/Button'
 import { TextField } from '../../components/ui/TextField'
 import { Modal } from '../../components/ui/Modal'
 import { Sheet } from '../../components/ui/Sheet'
+import { TextArea } from '../../components/ui/TextArea'
+import { Toast } from '../../components/ui/Toast'
 
 function ChevronLeft() {
   return (
@@ -52,6 +55,43 @@ function XIcon() {
   )
 }
 
+function OverflowIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="text-navy">
+      <circle cx="5" cy="12" r="1.8" />
+      <circle cx="12" cy="12" r="1.8" />
+      <circle cx="19" cy="12" r="1.8" />
+    </svg>
+  )
+}
+
+function GraduateIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="text-navy">
+      <circle cx="12" cy="12" r="9" />
+      <path d="m8 12.5 2.5 2.5 5.5-5.5" />
+    </svg>
+  )
+}
+
+function BlockIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="text-navy">
+      <circle cx="12" cy="12" r="9" />
+      <path d="m5.5 5.5 13 13" />
+    </svg>
+  )
+}
+
+function FlagIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="text-navy">
+      <path d="M6 21V4" />
+      <path d="M6 4h11l-2.5 4L17 12H6" />
+    </svg>
+  )
+}
+
 type MockAttachment = { type: 'image' | 'file'; name: string }
 
 /**
@@ -69,11 +109,24 @@ export default function Chat() {
   const me = useDemoStore((s) => s.me)
   const sendMessage = useDemoStore((s) => s.sendMessage)
   const shareMyProfile = useDemoStore((s) => s.shareMyProfile)
+  const graduateConversation = useDemoStore((s) => s.graduateConversation)
+  const blockPerson = useDemoStore((s) => s.blockPerson)
 
   const [draft, setDraft] = useState('')
   const [profileModalOpen, setProfileModalOpen] = useState(false)
   const [contextExpanded, setContextExpanded] = useState(false)
   const endRef = useRef<HTMLDivElement>(null)
+
+  // Conversation-management — the header's overflow menu and what it opens.
+  // A plain boolean per surface (not one "which dialog" enum) matches the
+  // rest of this file's style (profileModalOpen, reminderOpen, …).
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [graduateConfirmOpen, setGraduateConfirmOpen] = useState(false)
+  const [blockConfirmOpen, setBlockConfirmOpen] = useState(false)
+  const [reportOpen, setReportOpen] = useState(false)
+  const [reportStep, setReportStep] = useState<'write' | 'sent'>('write')
+  const [reportDetails, setReportDetails] = useState('')
+  const [actionToast, setActionToast] = useState('')
 
   // Attachments — demo/mocked only, see handlePickAttachment. `reminderSeen`
   // is per-mount (not persisted), so the privacy note is a one-time-per-visit
@@ -106,6 +159,9 @@ export default function Chat() {
   const meShared = convo.profileShared[ME_ID]
   const otherShared = convo.profileShared[otherId]
   const bothShared = meShared && otherShared
+  // Same stable label as the chat list (see lib/palLabel) — this connection
+  // must read as the same "Anonymous Pal N" here as it does there.
+  const palLabel = anonymousPalLabels(Object.values(conversations), ME_ID)[convo.id]
   // The profile-sharing prompt is demo-gated behind an actual back-and-forth
   // — showing it the instant the chat opens (before she's said anything
   // herself) would front-load an identity decision ahead of the
@@ -114,6 +170,12 @@ export default function Chat() {
   // Rough heuristic for whether the original post needs a "More" toggle —
   // no live layout measurement, just long-enough-to-likely-wrap-past-2-lines.
   const contextIsLong = convo.askSnippet.length > 90
+  // Graduated or blocked — either way, nothing new gets sent here again;
+  // the thread stays as a record rather than disappearing (see spec).
+  // Checked positively, not `!== 'active'`: conversations already sitting in
+  // a demo's localStorage from before this field existed have no `status`
+  // at all, and those must read as active, not silently lock up read-only.
+  const isReadOnly = convo.status === 'graduated' || convo.status === 'blocked'
 
   function handleSend() {
     if ((!draft.trim() && !attachment) || !convo) return
@@ -151,6 +213,37 @@ export default function Chat() {
     setPendingAttachmentType(null)
   }
 
+  function flashToast(message: string) {
+    setActionToast(message)
+    setTimeout(() => setActionToast(''), 2000)
+  }
+
+  function handleGraduateConfirm() {
+    if (!convo) return
+    graduateConversation(convo.id)
+    setGraduateConfirmOpen(false)
+    flashToast('Conversation graduated — kept as a read-only record.')
+  }
+
+  function handleBlockConfirm() {
+    if (!convo) return
+    blockPerson(convo.id)
+    setBlockConfirmOpen(false)
+    flashToast('Blocked. You won’t hear from them again here.')
+  }
+
+  function closeReport() {
+    setReportOpen(false)
+    setReportStep('write')
+    setReportDetails('')
+  }
+
+  function handleSubmitReport() {
+    // Prototype/mocked flow only — see spec's "not built": no real reporting
+    // pipeline, just enough to show the affordance and its confirmation.
+    setReportStep('sent')
+  }
+
   return (
     <div className="relative flex min-h-full flex-col">
       {/* Header — identity reflects the reveal state, not a fixed name. */}
@@ -165,12 +258,20 @@ export default function Chat() {
         ) : (
           <AnonymousAvatar size="md" />
         )}
-        <div className="min-w-0">
-          <p className="text-body-bold text-navy">{bothShared ? otherPerson?.displayName : 'Anonymous'}</p>
+        <div className="min-w-0 flex-1">
+          <p className="text-body-bold text-navy">{bothShared ? otherPerson?.displayName : palLabel}</p>
           <p className="truncate text-label text-navy-40">
             {bothShared ? "You've introduced yourselves" : 'Still anonymous to each other'}
           </p>
         </div>
+        <button
+          type="button"
+          onClick={() => setMenuOpen(true)}
+          aria-label="Conversation options"
+          className="flex h-11 w-11 shrink-0 items-center justify-center"
+        >
+          <OverflowIcon />
+        </button>
       </div>
 
       <div className="flex flex-col gap-4 p-4">
@@ -227,7 +328,7 @@ export default function Chat() {
           contextual line, not a feature card — a plain navy text action
           (the product's existing secondary-action style), never a filled
           button that could read as a required next step. */}
-      {hasExchanged && !bothShared && (
+      {hasExchanged && !bothShared && !isReadOnly && (
         <div className="mx-4 mb-3">
           {!meShared && (
             <div className="flex items-center justify-between gap-3 rounded-card bg-navy-20/30 px-3 py-2">
@@ -250,6 +351,18 @@ export default function Chat() {
         </div>
       )}
 
+      {isReadOnly ? (
+        // Read-only record — graduated or blocked, either way nothing new
+        // gets typed here again, so the composer itself is gone rather than
+        // just disabled (a grayed-out input would still invite a tap).
+        <div className="mt-auto border-t border-lavender-20 px-4 py-3">
+          <p className="text-center text-label text-navy-40">
+            {convo.status === 'graduated'
+              ? "You graduated from this chat. It's kept here as a read-only record."
+              : "You blocked this person. This conversation is now read-only."}
+          </p>
+        </div>
+      ) : (
       <div className="relative mt-auto flex flex-col gap-2 border-t border-lavender-20 px-4 py-2">
         {attachment && (
           <div className="flex items-center gap-2 rounded-card bg-lavender-20 px-3 py-2">
@@ -308,6 +421,7 @@ export default function Chat() {
           </Button>
         </div>
       </div>
+      )}
 
       {/* Attachment picker — one control, one small menu, matching the same
           card language as everything else in Peer Support rather than a
@@ -376,6 +490,140 @@ export default function Chat() {
           </Button>
         </div>
       </Modal>
+
+      {/* Conversation options — chat management, not identity (that's "Share
+          my profile" above, kept separate on purpose: it's about the
+          relationship progressing, not about managing the thread). Plain
+          rows, not cards — same icon-container treatment as the back button
+          and the composer's attach button (rounded-icon, lavender-40, navy
+          glyph) for all three, so nothing here reads as a separate UI
+          system or a featured action. A hairline divider between rows is
+          the only separation; Report gets no color treatment of its own —
+          this product doesn't use coral as an action color. */}
+      <Sheet isOpen={menuOpen} onClose={() => setMenuOpen(false)} title="Conversation options">
+        <div className="flex flex-col divide-y divide-lavender-20">
+          <button
+            type="button"
+            onClick={() => {
+              setMenuOpen(false)
+              setGraduateConfirmOpen(true)
+            }}
+            disabled={isReadOnly}
+            className="flex items-center gap-3 py-3 text-left disabled:opacity-40"
+          >
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-icon bg-lavender-40">
+              <GraduateIcon />
+            </span>
+            <div>
+              <p className="text-body-sm-bold text-navy">Graduate from chat</p>
+              <p className="text-label text-navy-60">Close this conversation when you're ready to move on.</p>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setMenuOpen(false)
+              setBlockConfirmOpen(true)
+            }}
+            disabled={isReadOnly}
+            className="flex items-center gap-3 py-3 text-left disabled:opacity-40"
+          >
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-icon bg-lavender-40">
+              <BlockIcon />
+            </span>
+            <p className="text-body-sm-bold text-navy">Block this person</p>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setMenuOpen(false)
+              setReportOpen(true)
+            }}
+            className="flex items-center gap-3 py-3 text-left"
+          >
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-icon bg-lavender-40">
+              <FlagIcon />
+            </span>
+            <p className="text-body-sm-bold text-navy">Report conversation</p>
+          </button>
+        </div>
+      </Sheet>
+
+      <Modal
+        isOpen={graduateConfirmOpen}
+        onClose={() => setGraduateConfirmOpen(false)}
+        title="Graduate from chat?"
+      >
+        <div className="flex flex-col gap-4">
+          <p className="text-body-sm text-navy-60">
+            You won't be able to send new messages here, but the conversation stays as a read-only
+            record — it won't disappear.
+          </p>
+          <Button variant="primary" onClick={handleGraduateConfirm}>
+            Graduate from chat
+          </Button>
+          <Button variant="ghost" onClick={() => setGraduateConfirmOpen(false)}>
+            Not yet
+          </Button>
+        </div>
+      </Modal>
+
+      <Modal isOpen={blockConfirmOpen} onClose={() => setBlockConfirmOpen(false)} title="Block this person?">
+        <div className="flex flex-col gap-4">
+          <p className="text-body-sm text-navy-60">
+            They won't be able to reach you again, and this conversation becomes read-only. They
+            won't be notified that you blocked them.
+          </p>
+          <Button variant="destructive" onClick={handleBlockConfirm}>
+            Block this person
+          </Button>
+          <Button variant="ghost" onClick={() => setBlockConfirmOpen(false)}>
+            Cancel
+          </Button>
+        </div>
+      </Modal>
+
+      {/* Report — mocked flow (see spec's "not built": no real reporting
+          pipeline for this prototype), just enough to show the affordance
+          exists and where it lives. */}
+      <Sheet isOpen={reportOpen} onClose={closeReport} title={reportStep === 'write' ? 'Report this conversation' : undefined}>
+        {reportStep === 'write' ? (
+          <div className="flex flex-col gap-4">
+            <p className="text-body-sm text-navy-60">
+              Let us know what's going on. Our team reviews reports and can step in if needed —
+              this stays private between you and the team.
+            </p>
+            <TextArea
+              autoFocus
+              rows={4}
+              maxLength={280}
+              value={reportDetails}
+              onChange={(e) => setReportDetails(e.target.value)}
+              placeholder="What happened? (optional)"
+            />
+            <Button variant="destructive" onClick={handleSubmitReport}>
+              Submit report
+            </Button>
+            <Button variant="ghost" onClick={closeReport}>
+              Cancel
+            </Button>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-4">
+            <p className="text-h4">Report submitted ✓</p>
+            <p className="text-body-sm text-navy-60">
+              Thanks for letting us know. Our team will review this conversation.
+            </p>
+            <Button variant="primary" onClick={closeReport}>
+              Done
+            </Button>
+          </div>
+        )}
+      </Sheet>
+
+      <Toast message={actionToast} isOpen={!!actionToast} />
     </div>
   )
 }

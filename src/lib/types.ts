@@ -52,6 +52,16 @@ export type ChatMessage = {
   system?: boolean
 }
 
+/**
+ * `active` — ordinary, still-open chat. `graduated` — she (or they) ended it
+ * the positive way, once it had run its course; kept as a read-only record
+ * rather than deleted. `blocked` — she stopped the connection for safety
+ * reasons; also read-only from then on, but a distinct reason from
+ * graduating. Conversation-level, not person-level, so blocking someone
+ * doesn't retroactively rewrite a different, unrelated chat with them.
+ */
+export type ConversationStatus = 'active' | 'graduated' | 'blocked'
+
 export type Conversation = {
   id: string
   askId: string
@@ -63,5 +73,6 @@ export type Conversation = {
   messages: ChatMessage[]
   /** Per-participant opt-in — sharing is mutual and never automatic (see spec). */
   profileShared: Record<PersonId, boolean>
+  status: ConversationStatus
   createdAt: string
 }

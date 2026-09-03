@@ -31,6 +31,8 @@ type State = {
   conversations: Record<string, Conversation>
   /** Requests *I* sent to someone else's ask, most recent last — drives the demo's "simulate their response" controls. */
   myOutgoingRequestIds: string[]
+  /** People whose asks/requests she's blocked — conversation-scoped action, but the person stays blocked feed-wide (see PixelPalFeedTab). */
+  blockedPersonIds: string[]
 
   // Author side — my own ask
   postAsk: (text: string) => string
@@ -49,6 +51,10 @@ type State = {
   shareMyProfile: (conversationId: string) => void
   simulateOtherSharesProfile: (conversationId: string) => void
 
+  // Conversation-level actions — see the chat header's overflow menu
+  graduateConversation: (conversationId: string) => void
+  blockPerson: (conversationId: string) => void
+
   resetDemo: () => void
 }
 
@@ -62,6 +68,7 @@ function buildInitialState() {
     messageRequests: {} as Record<string, MessageRequest>,
     conversations: {} as Record<string, Conversation>,
     myOutgoingRequestIds: [] as string[],
+    blockedPersonIds: [] as string[],
   }
 }
 
@@ -136,6 +143,7 @@ export const useDemoStore = create<State>()(
             },
           ],
           profileShared: { [ask.authorId]: false, [request.responderId]: false },
+          status: 'active',
           createdAt: new Date().toISOString(),
         }
         set((st) => ({
@@ -197,6 +205,7 @@ export const useDemoStore = create<State>()(
             },
           ],
           profileShared: { [ask.authorId]: false, [request.responderId]: false },
+          status: 'active',
           createdAt: new Date().toISOString(),
         }
         set((st) => ({
@@ -286,6 +295,53 @@ export const useDemoStore = create<State>()(
               profileShared: { ...convo.profileShared, [otherId]: true },
               messages: [...convo.messages, system],
             },
+          },
+        }))
+      },
+
+      graduateConversation: (conversationId: string) => {
+        const s = get()
+        const convo = s.conversations[conversationId]
+        // Checked positively, not `!== 'active'` — a conversation created
+        // before `status` existed (already in a demo's localStorage) has no
+        // status at all, and that must still count as active, not silently
+        // block graduating it.
+        if (!convo || convo.status === 'graduated' || convo.status === 'blocked') return
+        const system: ChatMessage = {
+          id: nextId('msg'),
+          senderId: ME_ID,
+          text: 'You graduated from this chat. It stays here as a read-only record.',
+          createdAt: new Date().toISOString(),
+          system: true,
+        }
+        set((st) => ({
+          conversations: {
+            ...st.conversations,
+            [conversationId]: { ...convo, status: 'graduated', messages: [...convo.messages, system] },
+          },
+        }))
+      },
+
+      blockPerson: (conversationId: string) => {
+        const s = get()
+        const convo = s.conversations[conversationId]
+        if (!convo || convo.status === 'blocked') return
+        const otherId = convo.participantIds.find((id) => id !== ME_ID)
+        if (!otherId) return
+        const system: ChatMessage = {
+          id: nextId('msg'),
+          senderId: ME_ID,
+          text: "You blocked this person. You won't hear from them again here.",
+          createdAt: new Date().toISOString(),
+          system: true,
+        }
+        set((st) => ({
+          blockedPersonIds: st.blockedPersonIds.includes(otherId)
+            ? st.blockedPersonIds
+            : [...st.blockedPersonIds, otherId],
+          conversations: {
+            ...st.conversations,
+            [conversationId]: { ...convo, status: 'blocked', messages: [...convo.messages, system] },
           },
         }))
       },

@@ -4,7 +4,9 @@ import { useDemoStore } from '../../store/useDemoStore'
 import { ME_ID } from '../../lib/seed'
 import { relativeTime } from '../../lib/relativeTime'
 import type { Ask } from '../../lib/types'
+import { anonymousPalLabels } from '../../lib/palLabel'
 import { AnonymousAvatar } from '../../components/ui/AnonymousAvatar'
+import { Avatar } from '../../components/ui/Avatar'
 import { Button } from '../../components/ui/Button'
 import { Sheet } from '../../components/ui/Sheet'
 import { TextArea } from '../../components/ui/TextArea'
@@ -68,6 +70,7 @@ export default function PixelPalFeedTab() {
   const asks = useDemoStore((s) => s.asks)
   const messageRequests = useDemoStore((s) => s.messageRequests)
   const conversations = useDemoStore((s) => s.conversations)
+  const people = useDemoStore((s) => s.people)
   const postAsk = useDemoStore((s) => s.postAsk)
   const sendMessageRequest = useDemoStore((s) => s.sendMessageRequest)
 
@@ -146,6 +149,10 @@ export default function PixelPalFeedTab() {
   const myChats = Object.values(conversations)
     .filter((c) => c.participantIds.includes(ME_ID))
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+  // Numbered by connection age, not by the list's (most-recent-first)
+  // display order — so a chat's label never shifts just because a newer
+  // one arrived above it.
+  const palLabels = anonymousPalLabels(Object.values(conversations), ME_ID)
 
   function handlePostAsk() {
     if (!askText.trim()) return
@@ -257,26 +264,43 @@ export default function PixelPalFeedTab() {
             // transient badge, not the row's permanent label.
             const isNew = convo.messages.length <= 1
             const seed = asks[convo.askId]?.anonSeed ?? convo.id.length
+            const otherId = convo.participantIds.find((id) => id !== ME_ID)
+            const bothShared = !!otherId && convo.profileShared[ME_ID] && convo.profileShared[otherId]
+            const otherPerson = otherId ? people[otherId] : undefined
+            // Whether this chat exists because *she* posted and someone
+            // answered, or because *she* went and answered someone else's
+            // post — the two read very differently ("connected through
+            // your post" vs. "you reached out"), so the label can't be one
+            // generic "connected over" line for both directions.
+            const iAmAskAuthor = asks[convo.askId]?.authorId === ME_ID
+            const contextLabel = iAmAskAuthor ? 'Connected through your post' : 'You reached out about'
             return (
               <button
                 key={convo.id}
                 type="button"
                 onClick={() => navigate(`/groups/pixel-pal/chat/${convo.id}`)}
-                className="flex items-center gap-3 rounded-card border border-lavender-40 bg-white p-3 text-left"
+                className="flex items-start gap-3 rounded-card border border-lavender-40 bg-white p-3 text-left"
               >
-                <AnonymousAvatar seed={seed} size="sm" />
+                {bothShared ? (
+                  <Avatar name={otherPerson?.displayName ?? 'Pixel Pal'} src={otherPerson?.avatarUrl} size="sm" />
+                ) : (
+                  <AnonymousAvatar seed={seed} size="sm" />
+                )}
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <p className="text-body-sm-bold text-navy">Anonymous</p>
+                    <p className="truncate text-body-sm-bold text-navy">
+                      {bothShared ? otherPerson?.displayName : palLabels[convo.id]}
+                    </p>
                     {isNew && (
-                      <span className="rounded-pill bg-lavender-40 px-1.5 py-0.5 text-label-bold uppercase text-navy">
+                      <span className="shrink-0 rounded-pill bg-lavender-40 px-1.5 py-0.5 text-label-bold uppercase text-navy">
                         New
                       </span>
                     )}
                   </div>
-                  <p className="truncate text-label text-navy-40">Connected over: “{convo.askSnippet}”</p>
+                  <p className="text-label text-navy-40">{contextLabel}</p>
+                  <p className="line-clamp-2 text-body-sm text-navy-60">“{convo.askSnippet}”</p>
                 </div>
-                <span className="shrink-0 text-body-sm-bold text-navy">Open chat →</span>
+                <span className="shrink-0 self-center text-body-sm-bold text-navy">Open chat →</span>
               </button>
             )
           })}
