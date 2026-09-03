@@ -1,0 +1,297 @@
+import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
+import { me, ME_ID, people, reserveResponders, seedAsks } from '../lib/seed'
+import type { Ask, ChatMessage, Conversation, MessageRequest, Person } from '../lib/types'
+
+let uid = 0
+function nextId(prefix: string) {
+  uid += 1
+  return `${prefix}_${Date.now()}_${uid}`
+}
+
+const incomingIntroLines = [
+  "I've been through something similar — happy to talk if it would help.",
+  "This really resonated with me. I'd love to connect if you're open to it.",
+  "Sending you support. I've been where you are and I'm glad to listen.",
+  "I don't have it all figured out either, but I'd like to talk if that's okay.",
+]
+
+const replyLines = [
+  'Thank you for reaching out — it means a lot.',
+  "I really needed to hear that today.",
+  "That's exactly how I felt too. It helps to know I'm not alone in this.",
+  'Thanks for sharing that. How are you holding up today?',
+]
+
+type State = {
+  me: Person
+  people: Record<string, Person>
+  asks: Record<string, Ask>
+  messageRequests: Record<string, MessageRequest>
+  conversations: Record<string, Conversation>
+  /** Requests *I* sent to someone else's ask, most recent last — drives the demo's "simulate their response" controls. */
+  myOutgoingRequestIds: string[]
+
+  // Author side — my own ask
+  postAsk: (text: string) => string
+  closeAsk: (askId: string) => void
+  simulateIncomingRequest: (askId: string) => void
+  acceptIncomingRequest: (requestId: string) => string
+  declineIncomingRequest: (requestId: string) => void
+
+  // Responder side — reaching out to someone else's ask
+  sendMessageRequest: (askId: string, introMessage: string) => string
+  simulateAskAuthorResponds: (requestId: string, outcome: 'accepted' | 'declined') => string | undefined
+
+  // Chat, shared by both directions
+  sendMessage: (conversationId: string, text: string) => void
+  simulateReply: (conversationId: string) => void
+  shareMyProfile: (conversationId: string) => void
+  simulateOtherSharesProfile: (conversationId: string) => void
+
+  resetDemo: () => void
+}
+
+function buildInitialState() {
+  const asks: Record<string, Ask> = {}
+  seedAsks.forEach((a) => (asks[a.id] = a))
+  return {
+    me,
+    people: { ...people },
+    asks,
+    messageRequests: {} as Record<string, MessageRequest>,
+    conversations: {} as Record<string, Conversation>,
+    myOutgoingRequestIds: [] as string[],
+  }
+}
+
+export const useDemoStore = create<State>()(
+  persist(
+    (set, get) => ({
+      ...buildInitialState(),
+
+      postAsk: (text: string) => {
+        const id = nextId('ask')
+        const ask: Ask = {
+          id,
+          authorId: ME_ID,
+          text: text.trim(),
+          createdAt: new Date().toISOString(),
+          status: 'open',
+          anonSeed: Object.keys(get().asks).length,
+        }
+        set((s) => ({ asks: { ...s.asks, [id]: ask } }))
+        return id
+      },
+
+      closeAsk: (askId: string) => {
+        set((s) => ({
+          asks: { ...s.asks, [askId]: { ...s.asks[askId], status: 'closed' } },
+        }))
+      },
+
+      simulateIncomingRequest: (askId: string) => {
+        const s = get()
+        const ask = s.asks[askId]
+        if (!ask) return
+        const taken = new Set(
+          Object.values(s.messageRequests)
+            .filter((r) => r.askId === askId)
+            .map((r) => r.responderId),
+        )
+        const pool = [...Object.keys(people), ...reserveResponders].filter(
+          (id) => id !== ask.authorId && !taken.has(id),
+        )
+        if (pool.length === 0) return
+        const responderId = pool[Math.floor(Math.random() * pool.length)]
+        const id = nextId('req')
+        const request: MessageRequest = {
+          id,
+          askId,
+          responderId,
+          introMessage: incomingIntroLines[Object.values(s.messageRequests).length % incomingIntroLines.length],
+          status: 'pending',
+          createdAt: new Date().toISOString(),
+        }
+        set((st) => ({ messageRequests: { ...st.messageRequests, [id]: request } }))
+      },
+
+      acceptIncomingRequest: (requestId: string) => {
+        const s = get()
+        const request = s.messageRequests[requestId]
+        const ask = request ? s.asks[request.askId] : undefined
+        if (!request || !ask) return ''
+        const convoId = nextId('convo')
+        const conversation: Conversation = {
+          id: convoId,
+          askId: ask.id,
+          askSnippet: ask.text,
+          participantIds: [ask.authorId, request.responderId],
+          messages: [
+            {
+              id: nextId('msg'),
+              senderId: request.responderId,
+              text: request.introMessage,
+              createdAt: request.createdAt,
+            },
+          ],
+          profileShared: { [ask.authorId]: false, [request.responderId]: false },
+          createdAt: new Date().toISOString(),
+        }
+        set((st) => ({
+          messageRequests: { ...st.messageRequests, [requestId]: { ...request, status: 'accepted' } },
+          conversations: { ...st.conversations, [convoId]: conversation },
+        }))
+        return convoId
+      },
+
+      declineIncomingRequest: (requestId: string) => {
+        set((s) => ({
+          messageRequests: {
+            ...s.messageRequests,
+            [requestId]: { ...s.messageRequests[requestId], status: 'declined' },
+          },
+        }))
+      },
+
+      sendMessageRequest: (askId: string, introMessage: string) => {
+        const id = nextId('req')
+        const request: MessageRequest = {
+          id,
+          askId,
+          responderId: ME_ID,
+          introMessage: introMessage.trim(),
+          status: 'pending',
+          createdAt: new Date().toISOString(),
+        }
+        set((s) => ({
+          messageRequests: { ...s.messageRequests, [id]: request },
+          myOutgoingRequestIds: [...s.myOutgoingRequestIds, id],
+        }))
+        return id
+      },
+
+      simulateAskAuthorResponds: (requestId: string, outcome: 'accepted' | 'declined') => {
+        const s = get()
+        const request = s.messageRequests[requestId]
+        const ask = request ? s.asks[request.askId] : undefined
+        if (!request || !ask) return undefined
+        if (outcome === 'declined') {
+          set((st) => ({
+            messageRequests: { ...st.messageRequests, [requestId]: { ...request, status: 'declined' } },
+          }))
+          return undefined
+        }
+        const convoId = nextId('convo')
+        const conversation: Conversation = {
+          id: convoId,
+          askId: ask.id,
+          askSnippet: ask.text,
+          participantIds: [ask.authorId, request.responderId],
+          messages: [
+            {
+              id: nextId('msg'),
+              senderId: request.responderId,
+              text: request.introMessage,
+              createdAt: request.createdAt,
+            },
+          ],
+          profileShared: { [ask.authorId]: false, [request.responderId]: false },
+          createdAt: new Date().toISOString(),
+        }
+        set((st) => ({
+          messageRequests: { ...st.messageRequests, [requestId]: { ...request, status: 'accepted' } },
+          conversations: { ...st.conversations, [convoId]: conversation },
+        }))
+        return convoId
+      },
+
+      sendMessage: (conversationId: string, text: string) => {
+        const trimmed = text.trim()
+        if (!trimmed) return
+        const message: ChatMessage = { id: nextId('msg'), senderId: ME_ID, text: trimmed, createdAt: new Date().toISOString() }
+        set((s) => {
+          const convo = s.conversations[conversationId]
+          if (!convo) return s
+          return {
+            conversations: {
+              ...s.conversations,
+              [conversationId]: { ...convo, messages: [...convo.messages, message] },
+            },
+          }
+        })
+      },
+
+      simulateReply: (conversationId: string) => {
+        const s = get()
+        const convo = s.conversations[conversationId]
+        if (!convo) return
+        const otherId = convo.participantIds.find((id) => id !== ME_ID)
+        if (!otherId) return
+        const message: ChatMessage = {
+          id: nextId('msg'),
+          senderId: otherId,
+          text: replyLines[convo.messages.length % replyLines.length],
+          createdAt: new Date().toISOString(),
+        }
+        set((st) => ({
+          conversations: {
+            ...st.conversations,
+            [conversationId]: { ...convo, messages: [...convo.messages, message] },
+          },
+        }))
+      },
+
+      shareMyProfile: (conversationId: string) => {
+        const s = get()
+        const convo = s.conversations[conversationId]
+        if (!convo || convo.profileShared[ME_ID]) return
+        const system: ChatMessage = {
+          id: nextId('msg'),
+          senderId: ME_ID,
+          text: 'You shared your profile.',
+          createdAt: new Date().toISOString(),
+          system: true,
+        }
+        set((st) => ({
+          conversations: {
+            ...st.conversations,
+            [conversationId]: {
+              ...convo,
+              profileShared: { ...convo.profileShared, [ME_ID]: true },
+              messages: [...convo.messages, system],
+            },
+          },
+        }))
+      },
+
+      simulateOtherSharesProfile: (conversationId: string) => {
+        const s = get()
+        const convo = s.conversations[conversationId]
+        const otherId = convo?.participantIds.find((id) => id !== ME_ID)
+        if (!convo || !otherId || convo.profileShared[otherId]) return
+        const bothNowShared = convo.profileShared[ME_ID]
+        const system: ChatMessage = {
+          id: nextId('msg'),
+          senderId: otherId,
+          text: bothNowShared ? "You're both sharing profiles now." : 'They shared their profile too.',
+          createdAt: new Date().toISOString(),
+          system: true,
+        }
+        set((st) => ({
+          conversations: {
+            ...st.conversations,
+            [conversationId]: {
+              ...convo,
+              profileShared: { ...convo.profileShared, [otherId]: true },
+              messages: [...convo.messages, system],
+            },
+          },
+        }))
+      },
+
+      resetDemo: () => set(buildInitialState()),
+    }),
+    { name: 'pixel-pal-concept-b-demo' },
+  ),
+)
