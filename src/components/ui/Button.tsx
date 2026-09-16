@@ -1,6 +1,6 @@
 import type { ButtonHTMLAttributes } from 'react'
 
-type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'destructive'
+type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'destructive' | 'outline'
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: ButtonVariant
@@ -20,6 +20,9 @@ const variants: Record<ButtonVariant, string> = {
   ghost: 'bg-transparent text-navy underline-offset-4 hover:underline',
   // Coral, sparingly, per spec §3 — calm/warm, not an alarm color.
   destructive: 'border border-coral bg-white text-coral hover:bg-coral/10',
+  // Navy-outlined secondary action — ported from V2 for choices (e.g. "Find
+  // someone else") that are real but shouldn't read as destructive/coral.
+  outline: 'border border-navy bg-white text-navy hover:bg-lavender-20',
 }
 
 export function Button({ variant = 'primary', fullWidth = true, className = '', ...props }: ButtonProps) {

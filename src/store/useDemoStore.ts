@@ -52,12 +52,22 @@ type State = {
   sendMessageRequest: (askId: string, introMessage: string) => string
   simulateAskAuthorResponds: (requestId: string, outcome: 'accepted' | 'declined') => string | undefined
 
-  // Pal Auto Match — automatic matching, no ask/reply step. The onboarding
-  // and finding/outcome screens are ported (Phase 2A), but Match Found's
-  // "Say hello" doesn't call `createPalMatchConversation` yet — that wiring
-  // is Phase 2B.
+  // Pal Auto Match — automatic matching, no ask/reply step.
   setMatchOutcomeDemo: (outcome: MatchOutcomeDemo) => void
-  createPalMatchConversation: () => string
+  /** There is never more than one *active* pal_match conversation at a
+   * time: this returns the existing one if she has one, and only creates a
+   * new one if she doesn't (e.g. after "Find someone else" has ended the
+   * last one). Makes Match Found's "Say hello" idempotent for the current
+   * match — revisiting it and clicking again reopens the same conversation
+   * rather than creating a duplicate. */
+  openPalMatchConversation: () => string
+  /** "Find someone else" on a pal_match conversation — a mismatch/rematch
+   * outcome, distinct from `graduateConversation`'s "ran its course
+   * positively" (see ConversationStatus/ConversationEndedReason in
+   * lib/types.ts). Marks it `status: 'ended'`, `endedReason: 'rematched'`;
+   * never deletes it or touches its messages beyond appending the same kind
+   * of system line graduate/block already use. */
+  endPalMatchForRematch: (conversationId: string) => void
   /** Edits the one shared Social Profile (`me`) — same record Ask's own
    * profile-reveal modal reads, per the "one Social Profile, never a second
    * identity" rule both prototypes use. This only writes to it; it does not
@@ -258,7 +268,12 @@ export const useDemoStore = create<State>()(
         }))
       },
 
-      createPalMatchConversation: () => {
+      openPalMatchConversation: () => {
+        const s = get()
+        const existing = Object.values(s.conversations).find(
+          (c) => c.origin === 'pal_match' && c.status === 'active' && c.participantIds.includes(ME_ID),
+        )
+        if (existing) return existing.id
         const id = nextId('convo')
         const conversation: Conversation = {
           id,
@@ -268,8 +283,32 @@ export const useDemoStore = create<State>()(
           status: 'active',
           createdAt: new Date().toISOString(),
         }
-        set((s) => ({ conversations: { ...s.conversations, [id]: conversation } }))
+        set((st) => ({ conversations: { ...st.conversations, [id]: conversation } }))
         return id
+      },
+
+      endPalMatchForRematch: (conversationId: string) => {
+        const s = get()
+        const convo = s.conversations[conversationId]
+        if (!convo || convo.status !== 'active') return
+        const system: ChatMessage = {
+          id: nextId('msg'),
+          senderId: ME_ID,
+          text: 'You found someone else. This conversation is kept here as a record.',
+          createdAt: new Date().toISOString(),
+          system: true,
+        }
+        set((st) => ({
+          conversations: {
+            ...st.conversations,
+            [conversationId]: {
+              ...convo,
+              status: 'ended',
+              endedReason: 'rematched',
+              messages: [...convo.messages, system],
+            },
+          },
+        }))
       },
 
       sendMessage: (conversationId: string, text: string) => {

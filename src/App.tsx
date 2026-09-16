@@ -16,6 +16,7 @@ import PalMatchSocialProfileEdit from './pages/pal-match/SocialProfileEdit'
 import PalMatchFinding from './pages/pal-match/PixelPalFinding'
 import PalMatchFound from './pages/pal-match/PixelPalMatchFound'
 import PalMatchNoMatchYet from './pages/pal-match/PixelPalNoMatchYet'
+import PalMatchChat from './pages/pal-match/PixelPalChat'
 
 function App() {
   return (
@@ -43,6 +44,7 @@ function App() {
         <Route path="/pixel-pal-match/finding" element={<PalMatchFinding />} />
         <Route path="/pixel-pal-match/match-found" element={<PalMatchFound />} />
         <Route path="/pixel-pal-match/no-match-yet" element={<PalMatchNoMatchYet />} />
+        <Route path="/pixel-pal-match/chat/:conversationId" element={<PalMatchChat />} />
       </Route>
     </Routes>
   )

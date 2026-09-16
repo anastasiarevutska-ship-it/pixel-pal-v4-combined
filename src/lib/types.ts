@@ -86,8 +86,27 @@ export type ChatMessage = {
  * reasons; also read-only from then on, but a distinct reason from
  * graduating. Conversation-level, not person-level, so blocking someone
  * doesn't retroactively rewrite a different, unrelated chat with them.
+ *
+ * `ended` — Pal Auto Match only: the connection stopped being active for a
+ * reason that is neither "ran its course positively" (`graduated`) nor a
+ * safety block (`blocked`) — see `endedReason`. Deliberately its own value
+ * rather than reusing `graduated`: "this specific match wasn't the right
+ * fit, so I want to look for someone else" and "this relationship ran its
+ * course and I'm closing it with gratitude" are different user intents that
+ * must not collapse into the same lifecycle state, even though both leave a
+ * conversation no longer active. Ask's `acceptIncomingRequest`/
+ * `simulateAskAuthorResponds`/`graduateConversation`/`blockPerson` never
+ * produce this value.
  */
-export type ConversationStatus = 'active' | 'graduated' | 'blocked'
+export type ConversationStatus = 'active' | 'graduated' | 'blocked' | 'ended'
+
+/**
+ * Only meaningful when `status === 'ended'` — why, distinct from the
+ * `graduated`/`blocked` reasons those statuses already carry in their own
+ * name. `rematched`: she chose "Find someone else" on this Pal Auto Match
+ * connection — a mismatch/rematch outcome, not a positive close-out.
+ */
+export type ConversationEndedReason = 'rematched'
 
 /**
  * How this conversation came to exist — the two independent discovery paths
@@ -121,4 +140,7 @@ export type Conversation = {
    * never identity-hidden in the first place — that's a different state
    * than "both participants share a boolean that happens to be true". */
   profileShared?: Record<PersonId, boolean>
+
+  /** Only set when `status === 'ended'` — see `ConversationEndedReason`. */
+  endedReason?: ConversationEndedReason
 }

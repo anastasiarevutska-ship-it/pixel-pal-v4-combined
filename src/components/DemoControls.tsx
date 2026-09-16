@@ -95,7 +95,7 @@ export function DemoControls() {
             </button>
             <button
               type="button"
-              disabled={!activeConversation}
+              disabled={!activeConversation || activeConversation.origin !== 'ask'}
               onClick={() => activeConversation && simulateOtherSharesProfile(activeConversation.id)}
               className="rounded-field border border-navy-20 px-3 py-2 text-left text-body-sm disabled:opacity-40"
             >
@@ -123,7 +123,14 @@ export function DemoControls() {
             <button
               type="button"
               disabled={!activeConversation}
-              onClick={() => activeConversation && navigate(`/groups/pixel-pal/chat/${activeConversation.id}`)}
+              onClick={() =>
+                activeConversation &&
+                navigate(
+                  activeConversation.origin === 'pal_match'
+                    ? `/pixel-pal-match/chat/${activeConversation.id}`
+                    : `/groups/pixel-pal/chat/${activeConversation.id}`,
+                )
+              }
               className="rounded-field border border-navy-20 px-3 py-1.5 text-label-bold text-navy disabled:opacity-40"
             >
               Latest chat
