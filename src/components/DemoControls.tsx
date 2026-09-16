@@ -22,6 +22,8 @@ export function DemoControls() {
   const simulateAskAuthorResponds = useDemoStore((s) => s.simulateAskAuthorResponds)
   const simulateReply = useDemoStore((s) => s.simulateReply)
   const simulateOtherSharesProfile = useDemoStore((s) => s.simulateOtherSharesProfile)
+  const matchOutcomeDemo = useDemoStore((s) => s.matchOutcomeDemo)
+  const setMatchOutcomeDemo = useDemoStore((s) => s.setMatchOutcomeDemo)
   const resetDemo = useDemoStore((s) => s.resetDemo)
 
   const myAsk = Object.values(asks).find((a) => a.authorId === ME_ID)
@@ -125,6 +127,39 @@ export function DemoControls() {
               className="rounded-field border border-navy-20 px-3 py-1.5 text-label-bold text-navy disabled:opacity-40"
             >
               Latest chat
+            </button>
+          </div>
+
+          <p className="mb-1 text-label-bold text-navy-60">PAL AUTO MATCH — outcome</p>
+          <div className="mb-3 flex flex-wrap gap-1.5">
+            <button
+              type="button"
+              onClick={() => setMatchOutcomeDemo('match_found')}
+              className={`rounded-field border px-3 py-1.5 text-label-bold ${
+                matchOutcomeDemo === 'match_found'
+                  ? 'border-navy bg-navy text-white'
+                  : 'border-navy-20 text-navy'
+              }`}
+            >
+              Match found
+            </button>
+            <button
+              type="button"
+              onClick={() => setMatchOutcomeDemo('no_match_yet')}
+              className={`rounded-field border px-3 py-1.5 text-label-bold ${
+                matchOutcomeDemo === 'no_match_yet'
+                  ? 'border-navy bg-navy text-white'
+                  : 'border-navy-20 text-navy'
+              }`}
+            >
+              No match yet
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/pixel-pal-match/how-it-works')}
+              className="rounded-field border border-navy-20 px-3 py-1.5 text-label-bold text-navy"
+            >
+              Pal entry
             </button>
           </div>
 

@@ -13,6 +13,12 @@ export const me: Person = {
   displayName: 'Samantha',
   alias: 'Samantha',
   location: SEATTLE_AREA,
+  // Ported from V2's seed (same Social Profile fields, same content) so the
+  // Pal Auto Match Social Profile preview screen has something real to show
+  // rather than an empty card.
+  signature: 'Two rounds of IVF down, still smiling most days.',
+  aboutMe: 'Denver-based, love hiking and terrible reality TV. Here for anyone who needs to vent at 2am.',
+  socialLinks: ['instagram.com/samantha.tries'],
 }
 
 function hoursAgo(h: number) {
@@ -110,4 +116,5 @@ export const palMatchPerson: Person = {
   id: 'p_river',
   displayName: 'River',
   alias: 'River',
+  aboutMe: 'Dog person, amateur baker, and always looking for a good series.',
 }

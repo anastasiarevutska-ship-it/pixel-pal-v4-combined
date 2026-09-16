@@ -23,6 +23,11 @@ const replyLines = [
   'Thanks for sharing that. How are you holding up today?',
 ]
 
+/** Presentation-only demo toggle for the Pal Auto Match "Finding" screen —
+ * ported from V2. There's no real matching algorithm behind it; this just
+ * picks which of the two outcome screens `Finding` sends her to. */
+export type MatchOutcomeDemo = 'match_found' | 'no_match_yet'
+
 type State = {
   me: Person
   people: Record<string, Person>
@@ -33,6 +38,8 @@ type State = {
   myOutgoingRequestIds: string[]
   /** People whose asks/requests she's blocked — conversation-scoped action, but the person stays blocked feed-wide (see PixelPalFeedTab). */
   blockedPersonIds: string[]
+  /** Pal Auto Match's demo outcome toggle — see `MatchOutcomeDemo`. */
+  matchOutcomeDemo: MatchOutcomeDemo
 
   // Author side — my own ask
   postAsk: (text: string) => string
@@ -45,11 +52,23 @@ type State = {
   sendMessageRequest: (askId: string, introMessage: string) => string
   simulateAskAuthorResponds: (requestId: string, outcome: 'accepted' | 'declined') => string | undefined
 
-  // Pal Auto Match — automatic matching, no ask/reply step. Just the shared
-  // Conversation entity for now; the matching flow itself (preferences,
-  // finding/outcome screens) isn't ported yet, so there's nothing upstream
-  // of this action to call it.
+  // Pal Auto Match — automatic matching, no ask/reply step. The onboarding
+  // and finding/outcome screens are ported (Phase 2A), but Match Found's
+  // "Say hello" doesn't call `createPalMatchConversation` yet — that wiring
+  // is Phase 2B.
+  setMatchOutcomeDemo: (outcome: MatchOutcomeDemo) => void
   createPalMatchConversation: () => string
+  /** Edits the one shared Social Profile (`me`) — same record Ask's own
+   * profile-reveal modal reads, per the "one Social Profile, never a second
+   * identity" rule both prototypes use. This only writes to it; it does not
+   * call or interact with Ask's `shareMyProfile`/reveal mechanic at all. */
+  updateSocialProfile: (patch: {
+    displayName: string
+    signature: string
+    aboutMe: string
+    socialLinks: string[]
+    avatarUrl: string
+  }) => void
 
   // Chat, shared by both directions
   sendMessage: (conversationId: string, text: string) => void
@@ -75,6 +94,7 @@ function buildInitialState() {
     conversations: {} as Record<string, Conversation>,
     myOutgoingRequestIds: [] as string[],
     blockedPersonIds: [] as string[],
+    matchOutcomeDemo: 'match_found' as MatchOutcomeDemo,
   }
 }
 
@@ -221,6 +241,21 @@ export const useDemoStore = create<State>()(
           conversations: { ...st.conversations, [convoId]: conversation },
         }))
         return convoId
+      },
+
+      setMatchOutcomeDemo: (outcome: MatchOutcomeDemo) => set({ matchOutcomeDemo: outcome }),
+
+      updateSocialProfile: (patch) => {
+        set((s) => ({
+          me: {
+            ...s.me,
+            displayName: patch.displayName,
+            signature: patch.signature,
+            aboutMe: patch.aboutMe,
+            socialLinks: patch.socialLinks,
+            avatarUrl: patch.avatarUrl || undefined,
+          },
+        }))
       },
 
       createPalMatchConversation: () => {

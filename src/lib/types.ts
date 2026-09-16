@@ -27,6 +27,14 @@ export type Person = {
   alias: string
   avatarUrl?: string
   location?: Location
+
+  // --- Social Profile extras — only used by the Pal Auto Match Social
+  // Profile preview screen (ported from V2), which shows these fields
+  // conditionally when present. Ask never reads these. `socialLinks` render
+  // as a platform icon there, never as the raw URL.
+  signature?: string
+  aboutMe?: string
+  socialLinks?: string[]
 }
 
 export type AskStatus = 'open' | 'closed'

@@ -8,6 +8,14 @@ import GroupsTab from './pages/community/GroupsTab'
 import PixelPalFeedTab from './pages/community/PixelPalFeedTab'
 import MyAsk from './pages/community/MyAsk'
 import Chat from './pages/community/Chat'
+import PalMatchHowItWorks from './pages/pal-match/HowItWorks'
+import PalMatchRequestNeeds from './pages/pal-match/RequestNeeds'
+import PalMatchRequestNote from './pages/pal-match/RequestNote'
+import PalMatchSocialProfilePreview from './pages/pal-match/SocialProfilePreview'
+import PalMatchSocialProfileEdit from './pages/pal-match/SocialProfileEdit'
+import PalMatchFinding from './pages/pal-match/PixelPalFinding'
+import PalMatchFound from './pages/pal-match/PixelPalMatchFound'
+import PalMatchNoMatchYet from './pages/pal-match/PixelPalNoMatchYet'
 
 function App() {
   return (
@@ -24,6 +32,17 @@ function App() {
         </Route>
         <Route path="/groups/pixel-pal/my-ask" element={<MyAsk />} />
         <Route path="/groups/pixel-pal/chat/:conversationId" element={<Chat />} />
+
+        {/* Pal Auto Match — ported from V2, Phase 2A: onboarding through the
+            matching result screens only, not yet connected to a conversation. */}
+        <Route path="/pixel-pal-match/how-it-works" element={<PalMatchHowItWorks />} />
+        <Route path="/pixel-pal-match/request/needs" element={<PalMatchRequestNeeds />} />
+        <Route path="/pixel-pal-match/request/note" element={<PalMatchRequestNote />} />
+        <Route path="/pixel-pal-match/social-profile-preview" element={<PalMatchSocialProfilePreview />} />
+        <Route path="/pixel-pal-match/social-profile-edit" element={<PalMatchSocialProfileEdit />} />
+        <Route path="/pixel-pal-match/finding" element={<PalMatchFinding />} />
+        <Route path="/pixel-pal-match/match-found" element={<PalMatchFound />} />
+        <Route path="/pixel-pal-match/no-match-yet" element={<PalMatchNoMatchYet />} />
       </Route>
     </Routes>
   )
