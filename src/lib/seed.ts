@@ -2,10 +2,17 @@ import type { Ask, Person } from './types'
 
 export const ME_ID = 'me'
 
+// Demo state (see lib/location.ts): every seeded person, Samantha included,
+// is placed in the Seattle area — this prototype only exercises the "same
+// local area" relationship today. The comparison logic itself supports the
+// other two (same state/no overlap); it just has no seed data to show them.
+const SEATTLE_AREA = { city: 'Seattle', state: 'WA' } as const
+
 export const me: Person = {
   id: ME_ID,
   displayName: 'Samantha',
   alias: 'Samantha',
+  location: SEATTLE_AREA,
 }
 
 function hoursAgo(h: number) {
@@ -18,14 +25,14 @@ function hoursAgo(h: number) {
 // the "alias + non-identifying avatar" prototype fixture called for in the
 // product doc, not a claim every real patient uses one.
 export const people: Record<string, Person> = {
-  p_wren: { id: 'p_wren', displayName: 'Wren', alias: 'Wren' },
-  p_nova: { id: 'p_nova', displayName: 'Nova', alias: 'Nova' },
-  p_juniper: { id: 'p_juniper', displayName: 'Juniper', alias: 'Juniper' },
-  p_sage: { id: 'p_sage', displayName: 'Sage', alias: 'Sage' },
-  p_marlowe: { id: 'p_marlowe', displayName: 'Marlowe', alias: 'Marlowe' },
-  p_iris: { id: 'p_iris', displayName: 'Iris', alias: 'Iris' },
-  p_reese: { id: 'p_reese', displayName: 'Reese', alias: 'Reese' },
-  p_tal: { id: 'p_tal', displayName: 'Tal', alias: 'Tal' },
+  p_wren: { id: 'p_wren', displayName: 'Wren', alias: 'Wren', location: SEATTLE_AREA },
+  p_nova: { id: 'p_nova', displayName: 'Nova', alias: 'Nova', location: SEATTLE_AREA },
+  p_juniper: { id: 'p_juniper', displayName: 'Juniper', alias: 'Juniper', location: SEATTLE_AREA },
+  p_sage: { id: 'p_sage', displayName: 'Sage', alias: 'Sage', location: SEATTLE_AREA },
+  p_marlowe: { id: 'p_marlowe', displayName: 'Marlowe', alias: 'Marlowe', location: SEATTLE_AREA },
+  p_iris: { id: 'p_iris', displayName: 'Iris', alias: 'Iris', location: SEATTLE_AREA },
+  p_reese: { id: 'p_reese', displayName: 'Reese', alias: 'Reese', location: SEATTLE_AREA },
+  p_tal: { id: 'p_tal', displayName: 'Tal', alias: 'Tal', location: SEATTLE_AREA },
 }
 
 // Seeded asks from other patients — realistic, neutral peer-support content
@@ -40,6 +47,7 @@ export const seedAsks: Ask[] = [
     createdAt: hoursAgo(2),
     status: 'open',
     anonSeed: 0,
+    experience: 'first_time',
   },
   {
     id: 'ask_2',
@@ -48,6 +56,7 @@ export const seedAsks: Ask[] = [
     createdAt: hoursAgo(5),
     status: 'open',
     anonSeed: 1,
+    experience: 'been_through_it',
   },
   {
     id: 'ask_3',
@@ -56,6 +65,7 @@ export const seedAsks: Ask[] = [
     createdAt: hoursAgo(9),
     status: 'open',
     anonSeed: 2,
+    experience: 'been_through_it',
   },
   {
     id: 'ask_4',
@@ -64,6 +74,7 @@ export const seedAsks: Ask[] = [
     createdAt: hoursAgo(20),
     status: 'open',
     anonSeed: 3,
+    experience: 'been_through_it',
   },
   {
     id: 'ask_5',
@@ -72,6 +83,7 @@ export const seedAsks: Ask[] = [
     createdAt: hoursAgo(30),
     status: 'open',
     anonSeed: 4,
+    experience: 'not_started',
   },
   {
     id: 'ask_6',
@@ -80,6 +92,7 @@ export const seedAsks: Ask[] = [
     createdAt: hoursAgo(48),
     status: 'open',
     anonSeed: 5,
+    experience: 'first_time',
   },
 ]
 

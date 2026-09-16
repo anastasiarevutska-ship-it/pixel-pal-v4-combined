@@ -3,13 +3,25 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useDemoStore } from '../../store/useDemoStore'
 import { ME_ID } from '../../lib/seed'
 import { relativeTime } from '../../lib/relativeTime'
-import type { Ask } from '../../lib/types'
+import type { Ask, AskExperience } from '../../lib/types'
 import { anonymousPalLabels } from '../../lib/palLabel'
+import { getLocationContext } from '../../lib/location'
 import { AnonymousAvatar } from '../../components/ui/AnonymousAvatar'
 import { Avatar } from '../../components/ui/Avatar'
 import { Button } from '../../components/ui/Button'
+import { Chip } from '../../components/ui/Chip'
+import { EmptyState } from '../../components/ui/EmptyState'
 import { Sheet } from '../../components/ui/Sheet'
 import { TextArea } from '../../components/ui/TextArea'
+
+// EXPERIENCE feed filter — single-select, defaults to none (all posts).
+// Deliberately not collected on the ask composer itself (see AskExperience
+// in lib/types), so this only ever filters seeded/other people's asks.
+const EXPERIENCE_FILTERS: { value: AskExperience; label: string }[] = [
+  { value: 'not_started', label: 'Not started yet' },
+  { value: 'first_time', label: 'First time' },
+  { value: 'been_through_it', label: 'Been through it before' },
+]
 
 function LockIcon() {
   return (
@@ -52,6 +64,26 @@ function InfoIcon() {
   )
 }
 
+function PinIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className="mt-0.5 shrink-0"
+    >
+      <path d="M12 21s7-6.2 7-11a7 7 0 0 0-14 0c0 4.8 7 11 7 11Z" />
+      <circle cx="12" cy="10" r="2.5" />
+    </svg>
+  )
+}
+
 // Demo/prototype convenience only — not intended production UX. Real
 // patients would never have their composer silently pre-filled; this exists
 // purely so a click-through demo doesn't stall on "what do I type here?"
@@ -71,6 +103,7 @@ export default function PixelPalFeedTab() {
   const messageRequests = useDemoStore((s) => s.messageRequests)
   const conversations = useDemoStore((s) => s.conversations)
   const people = useDemoStore((s) => s.people)
+  const me = useDemoStore((s) => s.me)
   const postAsk = useDemoStore((s) => s.postAsk)
   const sendMessageRequest = useDemoStore((s) => s.sendMessageRequest)
 
@@ -91,6 +124,14 @@ export default function PixelPalFeedTab() {
   const [respondingAsk, setRespondingAsk] = useState<Ask | null>(null)
   const [respondStep, setRespondStep] = useState<'write' | 'sent'>('write')
   const [introText, setIntroText] = useState('')
+
+  // EXPERIENCE feed filter — single-select; `null` is the default
+  // (unfiltered) state, not a fourth "Everyone" chip.
+  const [experienceFilter, setExperienceFilter] = useState<AskExperience | null>(null)
+
+  function handleExperienceFilterClick(value: AskExperience) {
+    setExperienceFilter((current) => (current === value ? null : value))
+  }
 
   // Entered from Home/Messages' "Start a conversation" shortcut.
   useEffect(() => {
@@ -140,6 +181,11 @@ export default function PixelPalFeedTab() {
     .filter((a) => a.authorId !== ME_ID && a.status === 'open')
     .filter((a) => myOutgoingRequestFor(a.id)?.status !== 'accepted')
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+  // EXPERIENCE chip narrows this same list — it never touches "Your post" or
+  // "Your chats" above, only "What's on people's minds" below.
+  const visibleFeedAsks = experienceFilter
+    ? feedAsks.filter((a) => a.experience === experienceFilter)
+    : feedAsks
 
   // Every established chat, regardless of which side accepted whom — a
   // request is a request only until it's accepted; once accepted it's not
@@ -193,6 +239,13 @@ export default function PixelPalFeedTab() {
     setIntroText('')
     setRespondStep('write')
   }
+
+  // Privacy-awareness context for the composer — see lib/location.ts.
+  // Never the other person's exact city, only how her own location relates
+  // to it, so she can decide for herself whether to reach out.
+  const respondingLocationContext = respondingAsk
+    ? getLocationContext(me.location, people[respondingAsk.authorId]?.location)
+    : null
 
   return (
     <>
@@ -309,7 +362,34 @@ export default function PixelPalFeedTab() {
 
       <div className="flex flex-col gap-3">
         <p className="text-label-bold uppercase text-navy-60">What's on people's minds</p>
-        {feedAsks.map((ask) => {
+
+        <div className="flex flex-col gap-2">
+          <p className="text-label-bold uppercase text-navy-60">Experience</p>
+          {/* Horizontally scrollable, no visible scrollbar — same Content
+              Library treatment-cycle-filter chip row, just this screen's
+              three values. Single-select: tapping the active chip again
+              clears it (see handleExperienceFilterClick). */}
+          <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {EXPERIENCE_FILTERS.map((filter) => (
+              <Chip
+                key={filter.value}
+                variant="filter"
+                label={filter.label}
+                selected={experienceFilter === filter.value}
+                onClick={() => handleExperienceFilterClick(filter.value)}
+              />
+            ))}
+          </div>
+        </div>
+
+        {visibleFeedAsks.length === 0 && (
+          <EmptyState
+            title="No posts match this filter yet"
+            description="Try another experience, or clear the filter to see everyone."
+          />
+        )}
+
+        {visibleFeedAsks.map((ask) => {
           const outgoing = myOutgoingRequestFor(ask.id)
           return (
             <div key={ask.id} className="flex flex-col gap-2 rounded-card bg-lavender-20 p-4">
@@ -420,6 +500,21 @@ export default function PixelPalFeedTab() {
               <AnonymousAvatar seed={respondingAsk.anonSeed} size="sm" />
               <p className="text-body-sm text-navy-80">{respondingAsk.text}</p>
             </div>
+
+            {/* Location context — a small privacy signal, not an
+                information card: tight padding, two short lines, no
+                warning language. Deliberately lighter than the quoted post
+                above (bg-lavender-20 p-3) and the message field below it. */}
+            {respondingLocationContext && (
+              <div className="flex items-start gap-1.5 rounded-card bg-yellow-40 px-3 py-1.5">
+                <PinIcon />
+                <p className="text-body-sm text-navy">
+                  <span className="text-body-sm-bold">{respondingLocationContext.title}</span>{' '}
+                  <span className="text-navy-60">{respondingLocationContext.body}</span>
+                </p>
+              </div>
+            )}
+
             <TextArea
               autoFocus
               rows={4}

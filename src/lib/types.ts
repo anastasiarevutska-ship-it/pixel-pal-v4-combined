@@ -8,6 +8,14 @@
 export type PersonId = string
 
 /**
+ * Coarse enough to compare "are these two people nearby" without pinpointing
+ * anyone — see lib/location.ts, which is the only thing allowed to turn this
+ * into copy. Never rendered directly; the other person's `city`/`state` are
+ * not shown to anyone but themselves.
+ */
+export type Location = { city: string; state: string }
+
+/**
  * A patient's existing Social Profile — reused as-is, never a second
  * identity created for Pixel Pal. `alias` may be a first name or a made-up
  * handle (the patient's own choice, same as the real app); `avatarUrl` is
@@ -18,9 +26,19 @@ export type Person = {
   displayName: string
   alias: string
   avatarUrl?: string
+  location?: Location
 }
 
 export type AskStatus = 'open' | 'closed'
+
+/**
+ * Where the author is in their own treatment journey — shown only as a
+ * feed filter (EXPERIENCE chips), never asked of the patient at post time.
+ * That's deliberate: spec's "not built" list rules out preference/matching
+ * questions on the ask composer itself, so this only exists on seeded
+ * asks — a patient's own new post never gets one.
+ */
+export type AskExperience = 'not_started' | 'first_time' | 'been_through_it'
 
 export type Ask = {
   id: string
@@ -30,6 +48,7 @@ export type Ask = {
   status: AskStatus
   /** Deterministic index into the anonymous-avatar palette (see AnonymousAvatar) — never derived from the author's real identity. */
   anonSeed: number
+  experience?: AskExperience
 }
 
 export type RequestStatus = 'pending' | 'accepted' | 'declined'
