@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { me, ME_ID, people, reserveResponders, seedAsks } from '../lib/seed'
+import { me, ME_ID, palMatchPerson, people, reserveResponders, seedAsks } from '../lib/seed'
 import type { Ask, ChatMessage, Conversation, MessageRequest, Person } from '../lib/types'
 
 let uid = 0
@@ -45,6 +45,12 @@ type State = {
   sendMessageRequest: (askId: string, introMessage: string) => string
   simulateAskAuthorResponds: (requestId: string, outcome: 'accepted' | 'declined') => string | undefined
 
+  // Pal Auto Match — automatic matching, no ask/reply step. Just the shared
+  // Conversation entity for now; the matching flow itself (preferences,
+  // finding/outcome screens) isn't ported yet, so there's nothing upstream
+  // of this action to call it.
+  createPalMatchConversation: () => string
+
   // Chat, shared by both directions
   sendMessage: (conversationId: string, text: string) => void
   simulateReply: (conversationId: string) => void
@@ -63,7 +69,7 @@ function buildInitialState() {
   seedAsks.forEach((a) => (asks[a.id] = a))
   return {
     me,
-    people: { ...people },
+    people: { ...people, [palMatchPerson.id]: palMatchPerson },
     asks,
     messageRequests: {} as Record<string, MessageRequest>,
     conversations: {} as Record<string, Conversation>,
@@ -131,6 +137,7 @@ export const useDemoStore = create<State>()(
         const convoId = nextId('convo')
         const conversation: Conversation = {
           id: convoId,
+          origin: 'ask',
           askId: ask.id,
           askSnippet: ask.text,
           participantIds: [ask.authorId, request.responderId],
@@ -193,6 +200,7 @@ export const useDemoStore = create<State>()(
         const convoId = nextId('convo')
         const conversation: Conversation = {
           id: convoId,
+          origin: 'ask',
           askId: ask.id,
           askSnippet: ask.text,
           participantIds: [ask.authorId, request.responderId],
@@ -213,6 +221,20 @@ export const useDemoStore = create<State>()(
           conversations: { ...st.conversations, [convoId]: conversation },
         }))
         return convoId
+      },
+
+      createPalMatchConversation: () => {
+        const id = nextId('convo')
+        const conversation: Conversation = {
+          id,
+          origin: 'pal_match',
+          participantIds: [ME_ID, palMatchPerson.id],
+          messages: [],
+          status: 'active',
+          createdAt: new Date().toISOString(),
+        }
+        set((s) => ({ conversations: { ...s.conversations, [id]: conversation } }))
+        return id
       },
 
       sendMessage: (conversationId: string, text: string) => {
@@ -254,7 +276,7 @@ export const useDemoStore = create<State>()(
       shareMyProfile: (conversationId: string) => {
         const s = get()
         const convo = s.conversations[conversationId]
-        if (!convo || convo.profileShared[ME_ID]) return
+        if (!convo || convo.profileShared?.[ME_ID]) return
         const system: ChatMessage = {
           id: nextId('msg'),
           senderId: ME_ID,
@@ -278,8 +300,8 @@ export const useDemoStore = create<State>()(
         const s = get()
         const convo = s.conversations[conversationId]
         const otherId = convo?.participantIds.find((id) => id !== ME_ID)
-        if (!convo || !otherId || convo.profileShared[otherId]) return
-        const bothNowShared = convo.profileShared[ME_ID]
+        if (!convo || !otherId || convo.profileShared?.[otherId]) return
+        const bothNowShared = convo.profileShared?.[ME_ID]
         const system: ChatMessage = {
           id: nextId('msg'),
           senderId: otherId,

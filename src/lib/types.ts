@@ -81,17 +81,36 @@ export type ChatMessage = {
  */
 export type ConversationStatus = 'active' | 'graduated' | 'blocked'
 
+/**
+ * How this conversation came to exist — the two independent discovery paths
+ * (V4 direction doc). Shared entity, origin-specific fields and origin-
+ * specific chat behavior: an ask-origin conversation carries the ask it grew
+ * out of and a mutual, independent profile-reveal state; a pal_match-origin
+ * conversation has neither, because Pal Auto Match has no ask/reply context
+ * and no hidden-identity phase — both social profiles are visible from the
+ * moment the conversation exists (see Person, once Pal Auto Match ports its
+ * own screens). Do not read `askId`/`askSnippet`/`profileShared` without
+ * checking `origin` first.
+ */
+export type ConversationOrigin = 'ask' | 'pal_match'
+
 export type Conversation = {
   id: string
-  askId: string
-  /** Frozen copy of the ask text at the moment the request was accepted — the
-   * ask may later be edited or closed without rewriting the reason two
-   * people are talking. */
-  askSnippet: string
+  origin: ConversationOrigin
   participantIds: [PersonId, PersonId]
   messages: ChatMessage[]
-  /** Per-participant opt-in — sharing is mutual and never automatic (see spec). */
-  profileShared: Record<PersonId, boolean>
   status: ConversationStatus
   createdAt: string
+
+  /** Ask-origin only. The ask this conversation grew out of. */
+  askId?: string
+  /** Ask-origin only. Frozen copy of the ask text at the moment the request
+   * was accepted — the ask may later be edited or closed without rewriting
+   * the reason two people are talking. */
+  askSnippet?: string
+  /** Ask-origin only. Per-participant opt-in — sharing is mutual and never
+   * automatic (see spec). Absent for pal_match conversations, which are
+   * never identity-hidden in the first place — that's a different state
+   * than "both participants share a boolean that happens to be true". */
+  profileShared?: Record<PersonId, boolean>
 }

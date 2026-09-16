@@ -192,8 +192,11 @@ export default function PixelPalFeedTab() {
   // "a request that succeeded," it's a chat, and belongs in exactly one
   // place. Covers both directions: her post, someone else's accepted
   // request into it, and her own accepted request into someone else's post.
+  // Ask-origin only — this feed is Ask's own screen, not the unified inbox
+  // (that's Messages). A pal_match conversation has no ask to read a
+  // snippet/author from, so it doesn't belong in this list.
   const myChats = Object.values(conversations)
-    .filter((c) => c.participantIds.includes(ME_ID))
+    .filter((c) => c.origin === 'ask' && c.participantIds.includes(ME_ID))
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
   // Numbered by connection age, not by the list's (most-recent-first)
   // display order — so a chat's label never shifts just because a newer
@@ -316,16 +319,16 @@ export default function PixelPalFeedTab() {
             // shouldn't freeze on that moment forever, so it's a small
             // transient badge, not the row's permanent label.
             const isNew = convo.messages.length <= 1
-            const seed = asks[convo.askId]?.anonSeed ?? convo.id.length
+            const seed = (convo.askId ? asks[convo.askId]?.anonSeed : undefined) ?? convo.id.length
             const otherId = convo.participantIds.find((id) => id !== ME_ID)
-            const bothShared = !!otherId && convo.profileShared[ME_ID] && convo.profileShared[otherId]
+            const bothShared = !!otherId && !!convo.profileShared?.[ME_ID] && !!convo.profileShared?.[otherId]
             const otherPerson = otherId ? people[otherId] : undefined
             // Whether this chat exists because *she* posted and someone
             // answered, or because *she* went and answered someone else's
             // post — the two read very differently ("connected through
             // your post" vs. "you reached out"), so the label can't be one
             // generic "connected over" line for both directions.
-            const iAmAskAuthor = asks[convo.askId]?.authorId === ME_ID
+            const iAmAskAuthor = !!convo.askId && asks[convo.askId]?.authorId === ME_ID
             const contextLabel = iAmAskAuthor ? 'Connected through your post' : 'You reached out about'
             return (
               <button

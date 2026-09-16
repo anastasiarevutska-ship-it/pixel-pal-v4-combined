@@ -156,8 +156,8 @@ export default function Chat() {
 
   const otherId = convo.participantIds.find((id) => id !== ME_ID)!
   const otherPerson = people[otherId]
-  const meShared = convo.profileShared[ME_ID]
-  const otherShared = convo.profileShared[otherId]
+  const meShared = convo.profileShared?.[ME_ID]
+  const otherShared = convo.profileShared?.[otherId]
   const bothShared = meShared && otherShared
   // Same stable label as the chat list (see lib/palLabel) — this connection
   // must read as the same "Anonymous Pal N" here as it does there.
@@ -169,7 +169,7 @@ export default function Chat() {
   const hasExchanged = convo.messages.some((m) => !m.system && m.senderId === ME_ID)
   // Rough heuristic for whether the original post needs a "More" toggle —
   // no live layout measurement, just long-enough-to-likely-wrap-past-2-lines.
-  const contextIsLong = convo.askSnippet.length > 90
+  const contextIsLong = (convo.askSnippet?.length ?? 0) > 90
   // Graduated or blocked — either way, nothing new gets sent here again;
   // the thread stays as a record rather than disappearing (see spec).
   // Checked positively, not `!== 'active'`: conversations already sitting in

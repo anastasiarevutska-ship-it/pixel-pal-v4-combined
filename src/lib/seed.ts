@@ -100,3 +100,14 @@ export const seedAsks: Ask[] = [
 // controls so there's more than one extra person available to draw from
 // without repeating the same alias twice in one session.
 export const reserveResponders = ['p_reese', 'p_tal']
+
+// The Pal Auto Match fixture (ported from V2's `mockMatch`) — deliberately
+// kept out of `people`/`reserveResponders` above, which are Ask's own
+// responder pool (`simulateIncomingRequest` draws from those two exports
+// directly). Pal Auto Match identity is never hidden, so unlike the Ask
+// roster this person needs no anonymous-avatar path at all.
+export const palMatchPerson: Person = {
+  id: 'p_river',
+  displayName: 'River',
+  alias: 'River',
+}
