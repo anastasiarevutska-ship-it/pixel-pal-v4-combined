@@ -1,4 +1,4 @@
-import { Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes } from 'react-router-dom'
 import Launcher from './pages/Launcher'
 import AppLayout from './pages/AppLayout'
 import HomeStub from './pages/HomeStub'
@@ -22,6 +22,12 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<Launcher />} />
+
+      {/* Short, shareable entry points (deep links) into the two features —
+          each just forwards to its real route, so the in-app URLs stay the
+          single source of truth. */}
+      <Route path="/peer-support" element={<Navigate to="/groups/pixel-pal" replace />} />
+      <Route path="/pixel-pal" element={<Navigate to="/pixel-pal-match/how-it-works" replace />} />
 
       <Route element={<AppLayout />}>
         <Route path="/home" element={<HomeStub />} />
