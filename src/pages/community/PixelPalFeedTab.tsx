@@ -1,13 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { useDemoStore } from '../../store/useDemoStore'
+import { useDemoStore, unseenAcceptedRequests } from '../../store/useDemoStore'
 import { ME_ID } from '../../lib/seed'
 import { relativeTime } from '../../lib/relativeTime'
 import type { Ask, AskExperience } from '../../lib/types'
-import { anonymousPalLabels } from '../../lib/palLabel'
 import { getLocationContext } from '../../lib/location'
 import { AnonymousAvatar } from '../../components/ui/AnonymousAvatar'
-import { Avatar } from '../../components/ui/Avatar'
 import { Button } from '../../components/ui/Button'
 import { Chip } from '../../components/ui/Chip'
 import { EmptyState } from '../../components/ui/EmptyState'
@@ -18,9 +16,9 @@ import { TextArea } from '../../components/ui/TextArea'
 // Deliberately not collected on the ask composer itself (see AskExperience
 // in lib/types), so this only ever filters seeded/other people's asks.
 const EXPERIENCE_FILTERS: { value: AskExperience; label: string }[] = [
-  { value: 'not_started', label: 'Not started yet' },
-  { value: 'first_time', label: 'First time' },
-  { value: 'been_through_it', label: 'Been through it before' },
+  { value: 'not_started', label: 'No experience' },
+  { value: 'first_time', label: 'First treatment' },
+  { value: 'been_through_it', label: 'Treated before' },
 ]
 
 function LockIcon() {
@@ -102,6 +100,8 @@ export default function PixelPalFeedTab() {
   const asks = useDemoStore((s) => s.asks)
   const messageRequests = useDemoStore((s) => s.messageRequests)
   const conversations = useDemoStore((s) => s.conversations)
+  const acknowledgedRequestIds = useDemoStore((s) => s.acknowledgedRequestIds)
+  const acknowledgeAcceptedRequests = useDemoStore((s) => s.acknowledgeAcceptedRequests)
   const people = useDemoStore((s) => s.people)
   const me = useDemoStore((s) => s.me)
   const postAsk = useDemoStore((s) => s.postAsk)
@@ -174,9 +174,10 @@ export default function PixelPalFeedTab() {
   }
 
   // Once one of my outgoing requests is accepted, that ask graduates out of
-  // "What's on people's minds" (potential connections) into "Your chats"
-  // (already-established ones) — an accepted thread should never keep
-  // sitting in the general feed looking like just another post to react to.
+  // "What's on people's minds" (potential connections) — it's a conversation
+  // now, and lives in Messages (the unified inbox), not here. An accepted
+  // thread should never keep sitting in the general feed looking like just
+  // another post to react to.
   const feedAsks = Object.values(asks)
     .filter((a) => a.authorId !== ME_ID && a.status === 'open')
     .filter((a) => myOutgoingRequestFor(a.id)?.status !== 'accepted')
@@ -187,21 +188,25 @@ export default function PixelPalFeedTab() {
     ? feedAsks.filter((a) => a.experience === experienceFilter)
     : feedAsks
 
-  // Every established chat, regardless of which side accepted whom — a
-  // request is a request only until it's accepted; once accepted it's not
-  // "a request that succeeded," it's a chat, and belongs in exactly one
-  // place. Covers both directions: her post, someone else's accepted
-  // request into it, and her own accepted request into someone else's post.
-  // Ask-origin only — this feed is Ask's own screen, not the unified inbox
-  // (that's Messages). A pal_match conversation has no ask to read a
-  // snippet/author from, so it doesn't belong in this list.
-  const myChats = Object.values(conversations)
-    .filter((c) => c.origin === 'ask' && c.participantIds.includes(ME_ID))
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-  // Numbered by connection age, not by the list's (most-recent-first)
-  // display order — so a chat's label never shifts just because a newer
-  // one arrived above it.
-  const palLabels = anonymousPalLabels(Object.values(conversations), ME_ID)
+  // Someone accepted a request I sent: its post leaves the feed (see
+  // feedAsks) and the chat lives in Messages, so this is the only place on
+  // this screen that says it happened — until she opens the chat.
+  const unseenAccepted = unseenAcceptedRequests({ messageRequests, acknowledgedRequestIds })
+  const firstAccepted = unseenAccepted[0]
+  const firstAcceptedConvo = firstAccepted
+    ? Object.values(conversations).find(
+        (c) => c.origin === 'ask' && c.askId === firstAccepted.askId && c.participantIds.includes(ME_ID),
+      )
+    : undefined
+
+  function handleOpenAccepted() {
+    if (unseenAccepted.length === 1 && firstAcceptedConvo) {
+      navigate(`/groups/pixel-pal/chat/${firstAcceptedConvo.id}`)
+    } else {
+      acknowledgeAcceptedRequests(unseenAccepted.map((r) => r.id))
+      navigate('/messages')
+    }
+  }
 
   function handlePostAsk() {
     if (!askText.trim()) return
@@ -252,56 +257,91 @@ export default function PixelPalFeedTab() {
 
   return (
     <>
-      <div className="flex flex-col gap-3">
-        {/* The feature identifier — the one thing that stays regardless of
-            whether she has an active post, so the screen never loses its
-            "you're inside Pixel Pal" anchor. */}
-        <span className="w-fit rounded-pill bg-lavender-40 px-3 py-1 text-label-bold uppercase text-navy">
-          Pixel Pal
-        </span>
+      {firstAccepted && (
+        <button
+          type="button"
+          onClick={handleOpenAccepted}
+          className="flex items-center gap-3 rounded-card bg-lavender-20 px-4 py-3 text-left"
+        >
+          <div className="min-w-0 flex-1">
+            <p className="text-body-sm-bold text-navy-80">
+              {unseenAccepted.length === 1
+                ? 'Your request was accepted'
+                : `${unseenAccepted.length} requests were accepted`}
+            </p>
+            {unseenAccepted.length === 1 && (
+              <p className="truncate text-label text-navy-60">&ldquo;{asks[firstAccepted.askId]?.text}&rdquo;</p>
+            )}
+          </div>
+          <span className="shrink-0 text-body-sm-bold text-navy">
+            {unseenAccepted.length === 1 ? 'Open chat →' : 'Open →'}
+          </span>
+        </button>
+      )}
 
+      <div className="flex flex-col gap-3">
         {displayedMyOpenAsk ? (
           /* Once she has an active post, the onboarding hero (heading,
              explanation, CTA) has done its job and would just be repeating
-             itself — replaced by a compact status/management row instead.
-             `line-clamp-2` + `p-3` mean an 8-line post takes exactly the
-             same space as a one-line post: this is a status entry point
-             into the post-detail screen, not a reproduction of the post
-             itself (that's what the feed's own anonymous cards are for,
-             and deliberately not what this looks like — white + a
-             lavender border, not `bg-lavender-20`, so "mine to manage"
-             reads as a different kind of thing from "theirs to react to"
-             at a glance). */
+             itself — replaced by "my post → its response status" instead.
+             Yellow 40, flat and borderless — the same quiet-note surface
+             this screen's own compose sheet already uses (see the privacy
+             hint below), not a card-shadow/white/lavender-border treatment,
+             so it reads as *her own, currently-open thing* rather than a
+             lavender community card (those are what the feed itself uses)
+             or a Lab Test-style appointment card (no icon, no event
+             chrome — this is a post, not a scheduled thing). `mb-2` on top
+             of the screen's own gap-6 is deliberate extra breathing room:
+             this card is the end of "my post," and the feed starting
+             directly after it should read as a clear new section, not a
+             continuation. */
           <Link
             to="/groups/pixel-pal/my-ask"
-            className="flex flex-col gap-1 rounded-card border border-lavender-40 bg-white px-3 py-2"
+            className="mb-2 flex flex-col gap-4 rounded-card bg-yellow-40 p-5"
           >
-            <p className="text-body-sm-bold text-navy">Your post</p>
-            <p className="line-clamp-2 text-body-sm text-navy-60">{displayedMyOpenAsk.text}</p>
-            {pendingCount > 0 ? (
-              <p className="text-body-sm-bold text-lavender">
-                {pendingCount} message {pendingCount === 1 ? 'request' : 'requests'} →
-              </p>
-            ) : (
-              <p className="text-body-sm text-navy-60">No message requests yet</p>
-            )}
+            <div className="flex flex-col gap-2">
+              <p className="text-label-bold uppercase text-navy-60">Your post</p>
+              <p className="line-clamp-2 text-body text-navy-80">{displayedMyOpenAsk.text}</p>
+            </div>
+            {/* Subtle divider, then a dedicated status area — reuses the
+                exact same request-state text/logic as before (see
+                pendingCount above), just given its own clearly separated
+                spot instead of sharing the snippet's own stack. */}
+            <div className="flex flex-col gap-0.5 border-t border-navy-20 pt-3">
+              {pendingCount > 0 ? (
+                <p className="text-body-sm-bold text-lavender">
+                  {pendingCount} message {pendingCount === 1 ? 'request' : 'requests'} →
+                </p>
+              ) : (
+                <>
+                  <p className="text-body-sm-bold text-navy-80">No requests yet</p>
+                  <p className="text-body-sm text-navy-60">We&rsquo;ll let you know when someone reaches out.</p>
+                </>
+              )}
+            </div>
           </Link>
         ) : (
           <>
+            {/* Same centered, `text-screen-title`-weight hero treatment as
+                Groups' own empty state (see GroupsTab.tsx) — this is the
+                Community screen's shared hero pattern, not a Peer-Support-
+                specific one, so switching tabs shouldn't feel like landing
+                on a differently styled screen. */}
             <div className="flex flex-col gap-1">
-              <h1 className="text-h3 text-navy">Find someone who understands</h1>
-              <p className="text-body text-navy-60">
-                Share what's on your mind anonymously, or reach out to someone you relate to.
+              <h1 className="text-center text-screen-title text-navy">Share what's on your mind</h1>
+              <p className="text-center text-body text-navy-60">
+                Share a question, worry, or experience anonymously — or reach out when someone
+                else's story resonates.
               </p>
             </div>
             <div className="flex flex-col gap-2">
-              <Button variant="primary" onClick={() => setComposeOpen(true)}>
-                Start a conversation
+              <Button variant="soft" onClick={() => setComposeOpen(true)}>
+                Share with peers
               </Button>
               {myLatestAsk && myLatestAsk.status === 'closed' && (
                 <Link
                   to="/groups/pixel-pal/my-ask"
-                  className="text-label text-navy-60 underline-offset-4 hover:underline"
+                  className="text-center text-label text-navy-60 underline-offset-4 hover:underline"
                 >
                   Your last post is closed — view requests →
                 </Link>
@@ -311,68 +351,28 @@ export default function PixelPalFeedTab() {
         )}
       </div>
 
-      {myChats.length > 0 && (
-        <div className="flex flex-col gap-3">
-          <p className="text-label-bold uppercase text-navy-60">Your chats</p>
-          {myChats.map((convo) => {
-            // "New" is a request the instant it's accepted; a chat title
-            // shouldn't freeze on that moment forever, so it's a small
-            // transient badge, not the row's permanent label.
-            const isNew = convo.messages.length <= 1
-            const seed = (convo.askId ? asks[convo.askId]?.anonSeed : undefined) ?? convo.id.length
-            const otherId = convo.participantIds.find((id) => id !== ME_ID)
-            const bothShared = !!otherId && !!convo.profileShared?.[ME_ID] && !!convo.profileShared?.[otherId]
-            const otherPerson = otherId ? people[otherId] : undefined
-            // Whether this chat exists because *she* posted and someone
-            // answered, or because *she* went and answered someone else's
-            // post — the two read very differently ("connected through
-            // your post" vs. "you reached out"), so the label can't be one
-            // generic "connected over" line for both directions.
-            const iAmAskAuthor = !!convo.askId && asks[convo.askId]?.authorId === ME_ID
-            const contextLabel = iAmAskAuthor ? 'Connected through your post' : 'You reached out about'
-            return (
-              <button
-                key={convo.id}
-                type="button"
-                onClick={() => navigate(`/groups/pixel-pal/chat/${convo.id}`)}
-                className="flex items-start gap-3 rounded-card border border-lavender-40 bg-white p-3 text-left"
-              >
-                {bothShared ? (
-                  <Avatar name={otherPerson?.displayName ?? 'Pixel Pal'} src={otherPerson?.avatarUrl} size="sm" />
-                ) : (
-                  <AnonymousAvatar seed={seed} size="sm" />
-                )}
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="truncate text-body-sm-bold text-navy">
-                      {bothShared ? otherPerson?.displayName : palLabels[convo.id]}
-                    </p>
-                    {isNew && (
-                      <span className="shrink-0 rounded-pill bg-lavender-40 px-1.5 py-0.5 text-label-bold uppercase text-navy">
-                        New
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-label text-navy-40">{contextLabel}</p>
-                  <p className="line-clamp-2 text-body-sm text-navy-60">“{convo.askSnippet}”</p>
-                </div>
-                <span className="shrink-0 self-center text-body-sm-bold text-navy">Open chat →</span>
-              </button>
-            )
-          })}
-        </div>
-      )}
-
       <div className="flex flex-col gap-3">
-        <p className="text-label-bold uppercase text-navy-60">What's on people's minds</p>
+        {/* Main feed section label — `h5` (Library's own `RESOURCES`
+            eyebrow size/weight, see tailwind.config.js's own note on
+            where that token came from), not the small `label-bold` this
+            row used to share with "Experience" below it. That size gap is
+            the actual fix here: the community feed is the primary content
+            on this screen, and the filter beneath it is a utility, so they
+            can't keep reading as two headings of equal weight. */}
+        <p className="text-h5 uppercase text-navy-80">What's on people's minds</p>
 
         <div className="flex flex-col gap-2">
-          <p className="text-label-bold uppercase text-navy-60">Experience</p>
+          {/* "Filter by experience" mirrors Library's own "Related tags" —
+              normal-case, `body-sm-bold`, clearly smaller/quieter than the
+              section eyebrow above it. No standalone uppercase "EXPERIENCE"
+              label anymore; this replaces it rather than sitting beside it. */}
+          <p className="text-body-sm-bold text-navy-80">Filter by experience</p>
           {/* Horizontally scrollable, no visible scrollbar — same Content
-              Library treatment-cycle-filter chip row, just this screen's
-              three values. Single-select: tapping the active chip again
+              Library filter/tag chip row, just this screen's three values
+              (see Chip's own `filter` variant for where its shape/type now
+              comes from). Single-select: tapping the active chip again
               clears it (see handleExperienceFilterClick). */}
-          <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="-mx-1 flex gap-0.5 overflow-x-auto px-1 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {EXPERIENCE_FILTERS.map((filter) => (
               <Chip
                 key={filter.value}

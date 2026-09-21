@@ -1,12 +1,20 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { me, ME_ID, palMatchPerson, people, reserveResponders, seedAsks } from '../lib/seed'
-import type { Ask, ChatMessage, Conversation, MessageRequest, Person } from '../lib/types'
+import type { Ask, ChatMessage, Conversation, ConversationStatus, MessageRequest, Person } from '../lib/types'
 
 let uid = 0
 function nextId(prefix: string) {
   uid += 1
   return `${prefix}_${Date.now()}_${uid}`
+}
+
+/** Any status that means "nothing new gets sent here again" — graduated,
+ * blocked, rematch-ended, or reported. Checked positively wherever a
+ * conversation might have no `status` at all (see graduateConversation's own
+ * comment) — legacy/undefined status must keep reading as active. */
+function isConversationClosed(status: ConversationStatus): boolean {
+  return status === 'graduated' || status === 'blocked' || status === 'ended' || status === 'reported'
 }
 
 const incomingIntroLines = [
@@ -28,6 +36,10 @@ const replyLines = [
  * picks which of the two outcome screens `Finding` sends her to. */
 export type MatchOutcomeDemo = 'match_found' | 'no_match_yet'
 
+/** Presentation-only demo toggle for the Home promo card. A single value, not
+ * two booleans, so Pixel Pal and Peer Support promos can never both show. */
+export type HomePromoDemo = 'pixel_pal' | 'peer_support' | 'none'
+
 type State = {
   me: Person
   people: Record<string, Person>
@@ -40,6 +52,11 @@ type State = {
   blockedPersonIds: string[]
   /** Pal Auto Match's demo outcome toggle — see `MatchOutcomeDemo`. */
   matchOutcomeDemo: MatchOutcomeDemo
+  /** Which (at most one) promo card Home shows — see `HomePromoDemo`. */
+  homePromoDemo: HomePromoDemo
+  /** Accepted outgoing requests whose chat she has already opened — until
+   * then they count as "new" (Peer Support's accepted card, nav dots). */
+  acknowledgedRequestIds: string[]
 
   // Author side — my own ask
   postAsk: (text: string) => string
@@ -54,6 +71,8 @@ type State = {
 
   // Pal Auto Match — automatic matching, no ask/reply step.
   setMatchOutcomeDemo: (outcome: MatchOutcomeDemo) => void
+  setHomePromoDemo: (promo: HomePromoDemo) => void
+  acknowledgeAcceptedRequests: (requestIds: string[]) => void
   /** There is never more than one *active* pal_match conversation at a
    * time: this returns the existing one if she has one, and only creates a
    * new one if she doesn't (e.g. after "Find someone else" has ended the
@@ -68,6 +87,17 @@ type State = {
    * never deletes it or touches its messages beyond appending the same kind
    * of system line graduate/block already use. */
   endPalMatchForRematch: (conversationId: string) => void
+  /** "Report a concern" on a pal_match conversation — a safety/moderation
+   * exit, fundamentally different from `endPalMatchForRematch` (a mismatch,
+   * still a normal outcome) and from `graduateConversation` (a positive
+   * close-out). Marks it `status: 'reported'` and records `reason`; also
+   * adds the other participant to `blockedPersonIds` so they're excluded
+   * from any future pal_match candidate the demo could offer (see
+   * `openPalMatchConversation`). Never deletes the conversation — Messages
+   * and the chat route are what actually make it disappear/unreachable, by
+   * filtering on this status; the record itself stays as the minimum
+   * internal trace needed to represent the report. */
+  reportPalMatchConversation: (conversationId: string, reason: string) => void
   /** Edits the one shared Social Profile (`me`) — same record Ask's own
    * profile-reveal modal reads, per the "one Social Profile, never a second
    * identity" rule both prototypes use. This only writes to it; it does not
@@ -93,6 +123,18 @@ type State = {
   resetDemo: () => void
 }
 
+/** Requests *I* sent that the other person accepted and I haven't opened the
+ * resulting chat for yet. Read-only derivation — no new request lifecycle. */
+export function unseenAcceptedRequests(s: {
+  messageRequests: Record<string, MessageRequest>
+  acknowledgedRequestIds?: string[]
+}): MessageRequest[] {
+  const seen = new Set(s.acknowledgedRequestIds ?? [])
+  return Object.values(s.messageRequests)
+    .filter((r) => r.responderId === ME_ID && r.status === 'accepted' && !seen.has(r.id))
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+}
+
 function buildInitialState() {
   const asks: Record<string, Ask> = {}
   seedAsks.forEach((a) => (asks[a.id] = a))
@@ -105,6 +147,8 @@ function buildInitialState() {
     myOutgoingRequestIds: [] as string[],
     blockedPersonIds: [] as string[],
     matchOutcomeDemo: 'match_found' as MatchOutcomeDemo,
+    homePromoDemo: 'pixel_pal' as HomePromoDemo,
+    acknowledgedRequestIds: [] as string[],
   }
 }
 
@@ -254,6 +298,13 @@ export const useDemoStore = create<State>()(
       },
 
       setMatchOutcomeDemo: (outcome: MatchOutcomeDemo) => set({ matchOutcomeDemo: outcome }),
+      setHomePromoDemo: (promo: HomePromoDemo) => set({ homePromoDemo: promo }),
+      acknowledgeAcceptedRequests: (requestIds: string[]) =>
+        set((s) => ({
+          acknowledgedRequestIds: [
+            ...new Set([...(s.acknowledgedRequestIds ?? []), ...requestIds]),
+          ],
+        })),
 
       updateSocialProfile: (patch) => {
         set((s) => ({
@@ -274,6 +325,15 @@ export const useDemoStore = create<State>()(
           (c) => c.origin === 'pal_match' && c.status === 'active' && c.participantIds.includes(ME_ID),
         )
         if (existing) return existing.id
+        // The demo has exactly one Pal Auto Match fixture (River — see
+        // lib/seed.ts's `palMatchPerson`), no roster of alternate
+        // candidates. If she's reported him, honor "these two people can't
+        // be matched again" the only honest way available here: no
+        // candidate exists, so return no conversation rather than
+        // reconnecting her to the person she just reported. Callers (see
+        // PixelPalMatchFound) route this to the existing "No match yet"
+        // screen instead of a chat.
+        if (s.blockedPersonIds.includes(palMatchPerson.id)) return ''
         const id = nextId('convo')
         const conversation: Conversation = {
           id,
@@ -311,13 +371,30 @@ export const useDemoStore = create<State>()(
         }))
       },
 
+      reportPalMatchConversation: (conversationId: string, reason: string) => {
+        const s = get()
+        const convo = s.conversations[conversationId]
+        if (!convo || convo.origin !== 'pal_match' || convo.status === 'reported') return
+        const otherId = convo.participantIds.find((id) => id !== ME_ID)
+        if (!otherId) return
+        set((st) => ({
+          blockedPersonIds: st.blockedPersonIds.includes(otherId)
+            ? st.blockedPersonIds
+            : [...st.blockedPersonIds, otherId],
+          conversations: {
+            ...st.conversations,
+            [conversationId]: { ...convo, status: 'reported', reportReason: reason.trim() },
+          },
+        }))
+      },
+
       sendMessage: (conversationId: string, text: string) => {
         const trimmed = text.trim()
         if (!trimmed) return
         const message: ChatMessage = { id: nextId('msg'), senderId: ME_ID, text: trimmed, createdAt: new Date().toISOString() }
         set((s) => {
           const convo = s.conversations[conversationId]
-          if (!convo) return s
+          if (!convo || isConversationClosed(convo.status)) return s
           return {
             conversations: {
               ...s.conversations,
@@ -330,7 +407,7 @@ export const useDemoStore = create<State>()(
       simulateReply: (conversationId: string) => {
         const s = get()
         const convo = s.conversations[conversationId]
-        if (!convo) return
+        if (!convo || isConversationClosed(convo.status)) return
         const otherId = convo.participantIds.find((id) => id !== ME_ID)
         if (!otherId) return
         const message: ChatMessage = {
@@ -401,8 +478,12 @@ export const useDemoStore = create<State>()(
         // Checked positively, not `!== 'active'` — a conversation created
         // before `status` existed (already in a demo's localStorage) has no
         // status at all, and that must still count as active, not silently
-        // block graduating it.
-        if (!convo || convo.status === 'graduated' || convo.status === 'blocked') return
+        // block graduating it. Shared by both Ask's Chat.tsx and Pal Auto
+        // Match's PixelPalChat.tsx — `ended`/`reported` only ever apply to
+        // the latter, `blocked` only to the former, but this guard covers
+        // all of them so neither origin can graduate an already-closed
+        // conversation.
+        if (!convo || isConversationClosed(convo.status)) return
         const system: ChatMessage = {
           id: nextId('msg'),
           senderId: ME_ID,

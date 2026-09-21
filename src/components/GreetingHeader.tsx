@@ -9,10 +9,14 @@ export function GreetingHeader({ line1, line2 }: { line1: string; line2: string 
   const me = useDemoStore((s) => s.me)
   return (
     <div className="flex items-center justify-between">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-4">
         <Avatar name={me.displayName} src={me.avatarUrl} size="lg" />
         <div>
-          <p className="text-body text-navy-80">{line1}</p>
+          {/* Lighter than line2 in both weight and color — line2 stays the
+              only bold, full-navy element here, so the greeting reads as
+              one quiet lead-in phrase before her name, not two competing
+              bold lines. */}
+          <p className="text-body text-navy-60">{line1}</p>
           <p className="text-body-bold text-navy-80">{line2}</p>
         </div>
       </div>

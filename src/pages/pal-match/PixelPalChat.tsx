@@ -7,6 +7,8 @@ import { TextField } from '../../components/ui/TextField'
 import { Button } from '../../components/ui/Button'
 import { Sheet } from '../../components/ui/Sheet'
 import { Modal } from '../../components/ui/Modal'
+import { TextArea } from '../../components/ui/TextArea'
+import { Toast } from '../../components/ui/Toast'
 
 const starters = [
   {
@@ -28,6 +30,14 @@ const starters = [
 // attachment field, so this folds a line into the message text rather than
 // introducing a second attachment system alongside Ask's.
 type MockAttachment = { type: 'image' | 'file'; name: string }
+
+function PlusIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="text-navy">
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  )
+}
 
 function ImageIcon() {
   return (
@@ -70,9 +80,9 @@ function XIcon() {
  * direction doc — Ask and Pal Auto Match intentionally have different chat
  * experiences on top of the same Conversation entity).
  *
- * Attachments reuse Ask's own lightweight inline-mock pattern (a small
- * `Sheet` + a pending-attachment chip folded into the message text) rather
- * than porting V2's separate `AttachSheet`/`MessageAttachmentViews`
+ * Attachments reuse Ask's own lightweight inline-mock pattern (a centered
+ * `Modal` picker + a pending-attachment chip folded into the message text)
+ * rather than porting V2's separate `AttachSheet`/`MessageAttachmentViews`
  * components — one mocked attachment approach, not two. Unlike Ask's chat,
  * there's no one-time privacy reminder before attaching: that reminder
  * exists there specifically because Ask starts anonymous, which doesn't
@@ -85,10 +95,17 @@ export default function PixelPalChat() {
   const people = useDemoStore((s) => s.people)
   const sendMessage = useDemoStore((s) => s.sendMessage)
   const endPalMatchForRematch = useDemoStore((s) => s.endPalMatchForRematch)
+  const graduateConversation = useDemoStore((s) => s.graduateConversation)
+  const reportPalMatchConversation = useDemoStore((s) => s.reportPalMatchConversation)
 
   const [draft, setDraft] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
   const [findSomeoneElseOpen, setFindSomeoneElseOpen] = useState(false)
+  const [graduateOpen, setGraduateOpen] = useState(false)
+  const [finalMessage, setFinalMessage] = useState('')
+  const [reportOpen, setReportOpen] = useState(false)
+  const [reportReason, setReportReason] = useState('')
+  const [actionToast, setActionToast] = useState('')
   const [attachSheetOpen, setAttachSheetOpen] = useState(false)
   const [attachment, setAttachment] = useState<MockAttachment | null>(null)
   const endRef = useRef<HTMLDivElement>(null)
@@ -99,7 +116,11 @@ export default function PixelPalChat() {
     endRef.current?.scrollIntoView({ block: 'end' })
   }, [convo?.messages.length])
 
-  if (!convo) {
+  // 'reported' is deliberately treated the same as "doesn't exist" — a
+  // reported conversation must be unreachable, not a read-only record (see
+  // reportPalMatchConversation in the store). Hitting this URL directly
+  // after reporting must not restore access to it.
+  if (!convo || convo.status === 'reported') {
     return (
       <div className="flex flex-col gap-4 p-5">
         <button type="button" onClick={() => navigate('/messages')} className="text-label-bold text-navy-60">
@@ -113,12 +134,12 @@ export default function PixelPalChat() {
   const otherId = convo.participantIds.find((id) => id !== ME_ID)!
   const otherPerson = people[otherId]
   const hasSentFirstMessage = convo.messages.some((m) => m.senderId === ME_ID)
-  // The only way a pal_match conversation stops being active — see
-  // `endPalMatchForRematch`/ConversationStatus in lib/types.ts. Nothing
-  // grades/blocks a Pal Auto Match connection in this concept (see V2's own
-  // source-of-truth "Legacy concepts" list), so `status` is otherwise
-  // always 'active' here.
-  const isReadOnly = convo.status === 'ended'
+  // Any non-active status means nothing new gets sent here again — rematch-
+  // ended (`endPalMatchForRematch`) or graduated (`graduateConversation`,
+  // shared with Ask's Chat.tsx). `reported` never reaches this component at
+  // all (see the guard above) and `blocked` never applies to a pal_match
+  // conversation (that's Ask's own safety exit).
+  const isReadOnly = convo.status !== 'active'
 
   function handleSend() {
     if ((!draft.trim() && !attachment) || !convo) return
@@ -151,14 +172,40 @@ export default function PixelPalChat() {
     navigate('/pixel-pal-match/finding')
   }
 
-  // Presentational-only, same as V2 — both simply close the menu, neither
-  // wired into a real flow yet there either.
-  function handlePausePlaceholder() {
-    setMenuOpen(false)
+  function flashToast(message: string) {
+    setActionToast(message)
+    setTimeout(() => setActionToast(''), 2000)
   }
 
-  function handleReportPlaceholder() {
-    setMenuOpen(false)
+  // Graduate — a positive, natural close-out, distinct from "Find someone
+  // else" (a mismatch) and "Report" (a safety exit). The optional final
+  // message, if she writes one, goes in as her own last normal message
+  // *before* graduateConversation appends its own read-only system line —
+  // ordering matters here, not two independent writes.
+  function handleGraduateConfirm() {
+    if (!convo) return
+    const trimmed = finalMessage.trim()
+    if (trimmed) sendMessage(convo.id, trimmed)
+    graduateConversation(convo.id)
+    setGraduateOpen(false)
+    setFinalMessage('')
+    flashToast('Graduated — kept as a read-only record.')
+  }
+
+  function closeReport() {
+    setReportOpen(false)
+    setReportReason('')
+  }
+
+  // Report — a safety/moderation exit, not a normal relationship ending.
+  // Disconnects immediately: reportPalMatchConversation marks the
+  // conversation unreachable (see the store action and the `!convo ||
+  // status === 'reported'` guard above), so navigating straight back into
+  // the matching flow is correct — there's nothing left here to look at.
+  function handleSubmitReport() {
+    if (!convo || !reportReason.trim()) return
+    reportPalMatchConversation(convo.id, reportReason.trim())
+    navigate('/pixel-pal-match/finding')
   }
 
   return (
@@ -187,22 +234,13 @@ export default function PixelPalChat() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-4">
-        {/* Care Team / medical-question handoff — same clinical-boundary
-            purpose as Ask's Chat.tsx footer link, applies symmetrically to
-            both peers. */}
-        <div className="mb-3 flex items-center justify-between gap-3 rounded-field bg-lavender-20 px-3 py-2">
-          <div className="min-w-0">
-            <p className="text-label-bold text-navy-80">Medical question?</p>
-            <p className="text-label text-navy-60">Your Care Team is the best place to ask.</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => navigate('/messages')}
-            className="shrink-0 whitespace-nowrap text-label-bold text-navy underline-offset-4 hover:underline"
-          >
-            Message Care Team →
-          </button>
-        </div>
+        {/* Scrolls away with the rest of the conversation — shown once at
+            the very start, not pinned. Seeing it again means scrolling all
+            the way back up, same as the first thing anyone reads at the top
+            of any chat. */}
+        <p className="mb-3 text-center text-label text-navy-60">
+          By chatting you agree to our <span className="underline">community guidelines</span>.
+        </p>
 
         <div className="flex flex-col gap-3">
           {convo.messages.map((message) => {
@@ -251,6 +289,19 @@ export default function PixelPalChat() {
         )}
       </div>
 
+      {/* Quiet, persistent clinical-boundary affordance — fixed above the
+          composer, same as the top guidelines line, so it's reachable
+          regardless of how far the conversation has scrolled. Available
+          even when read-only: Care Team access shouldn't depend on a
+          match's status. */}
+      <button
+        type="button"
+        onClick={() => navigate('/messages')}
+        className="border-t border-navy-20 px-4 py-2 text-center text-label text-navy-60 hover:text-navy"
+      >
+        Need a nurse? Talk to your Care Team
+      </button>
+
       {/* Composer — same +/input/Send shape as V2's PixelPalChat. Gone
           entirely once she's found someone else, same convention as Ask's
           own read-only treatment: a grayed-out input would still invite a
@@ -258,7 +309,9 @@ export default function PixelPalChat() {
       {isReadOnly ? (
         <div className="border-t border-navy-20 px-4 py-3">
           <p className="text-center text-label text-navy-40">
-            You found someone else. This conversation is kept here as a read-only record.
+            {convo.status === 'graduated'
+              ? "You graduated from this chat. It's kept here as a read-only record."
+              : 'You found someone else. This conversation is kept here as a read-only record.'}
           </p>
         </div>
       ) : (
@@ -283,10 +336,12 @@ export default function PixelPalChat() {
           <button
             type="button"
             onClick={() => setAttachSheetOpen(true)}
-            aria-label="Add"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-field border border-navy-20 text-h4 text-navy hover:bg-lavender-20"
+            aria-label="Add attachment"
+            className="flex h-11 w-11 shrink-0 items-center justify-center"
           >
-            +
+            <span className="flex h-8 w-8 items-center justify-center rounded-icon bg-lavender-40">
+              <PlusIcon />
+            </span>
           </button>
           <div className="min-w-0 flex-1">
             <TextField
@@ -303,7 +358,8 @@ export default function PixelPalChat() {
             type="button"
             onClick={handleSend}
             aria-label="Send message"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-pill bg-navy text-white hover:bg-navy-80"
+            disabled={!draft.trim() && !attachment}
+            className="flex h-11 w-11 shrink-0 items-center justify-center text-navy disabled:opacity-40"
           >
             <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5" aria-hidden="true">
               <path d="M3.105 2.288a.75.75 0 00-.826.95l1.414 4.925A1.5 1.5 0 005.135 9.25h6.115a.75.75 0 010 1.5H5.135a1.5 1.5 0 00-1.442 1.086l-1.414 4.926a.75.75 0 00.826.95 28.897 28.897 0 0015.293-7.155.75.75 0 000-1.114A28.897 28.897 0 003.105 2.288z" />
@@ -313,40 +369,53 @@ export default function PixelPalChat() {
       </div>
       )}
 
-      {/* Attachment picker — a Sheet, matching the same interaction shape
-          Ask's own Chat.tsx already uses for its mocked attachment, rather
-          than porting V2's separate AttachSheet component. */}
-      <Sheet isOpen={attachSheetOpen} onClose={() => setAttachSheetOpen(false)} title="Add to your message">
-        <div className="flex flex-col gap-2">
+      {/* Attachment picker — centered modal, matching the reference design
+          (not a bottom sheet), same as Ask's own Chat.tsx. Demo/mocked
+          selection only, see MockAttachment. */}
+      <Modal
+        isOpen={attachSheetOpen}
+        onClose={() => setAttachSheetOpen(false)}
+        title="Attach a File"
+        className="bg-yellow-40"
+      >
+        <div className="flex flex-col gap-3">
           <button
             type="button"
             onClick={() => handlePickAttachment('image')}
-            className="flex items-center gap-3 rounded-card bg-lavender-20 p-3 text-left"
+            className="w-full rounded-pill bg-lavender-80 py-3 text-body-bold text-navy"
           >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-icon bg-lavender-40">
-              <ImageIcon />
-            </span>
-            <p className="text-body-sm-bold text-navy">Photo or video</p>
+            Image from Camera
+          </button>
+          <button
+            type="button"
+            onClick={() => handlePickAttachment('image')}
+            className="w-full rounded-pill bg-lavender-80 py-3 text-body-bold text-navy"
+          >
+            Image from Gallery
           </button>
           <button
             type="button"
             onClick={() => handlePickAttachment('file')}
-            className="flex items-center gap-3 rounded-card bg-lavender-20 p-3 text-left"
+            className="w-full rounded-pill bg-lavender-80 py-3 text-body-bold text-navy"
           >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-icon bg-lavender-40">
-              <FileIcon />
-            </span>
-            <p className="text-body-sm-bold text-navy">File</p>
+            Document
           </button>
+          <Button variant="outline" onClick={() => setAttachSheetOpen(false)}>
+            Cancel
+          </Button>
         </div>
-      </Sheet>
+      </Modal>
 
-      {/* Relationship menu — symmetric, Pal Auto Match-only. Only "Find
-          someone else" is wired; the other two are presentational
-          placeholders, same as V2. "Find someone else"/"Pause" disabled once
-          she's already found someone else — same convention as Ask's own
-          Graduate/Block rows going disabled once read-only; Report stays
-          available either way. */}
+      {/* Relationship menu — symmetric, Pal Auto Match-only. Three
+          fundamentally different relationship-ending outcomes, matching the
+          Ask chat's own Graduate/Block/Report menu in spirit (see
+          community/Chat.tsx): a positive close-out, a mismatch/rematch, and
+          a safety exit must stay distinct actions, not collapse into one.
+          "Find someone else"/"Graduate" disabled once the conversation is
+          already closed — same convention as Ask's own Graduate/Block rows;
+          Report stays available either way, also matching Ask. No "Pause" —
+          it was a presentational-only placeholder ported from V2 with no
+          real lifecycle meaning; removed rather than left as dead UI. */}
       <Sheet isOpen={menuOpen} onClose={() => setMenuOpen(false)} title="Conversation">
         <div className="flex flex-col gap-1">
           <MenuRow
@@ -357,8 +426,21 @@ export default function PixelPalChat() {
               setFindSomeoneElseOpen(true)
             }}
           />
-          <MenuRow label="Pause Pixel Pal" disabled={isReadOnly} onClick={handlePausePlaceholder} />
-          <MenuRow label="Report a concern" onClick={handleReportPlaceholder} />
+          <MenuRow
+            label="Graduate"
+            disabled={isReadOnly}
+            onClick={() => {
+              setMenuOpen(false)
+              setGraduateOpen(true)
+            }}
+          />
+          <MenuRow
+            label="Report a concern"
+            onClick={() => {
+              setMenuOpen(false)
+              setReportOpen(true)
+            }}
+          />
         </div>
       </Sheet>
 
@@ -376,6 +458,72 @@ export default function PixelPalChat() {
           </Button>
         </div>
       </Modal>
+
+      {/* Graduate — the "Thanks screen": a positive close-out, with an
+          optional, never-prefilled final message to her Pal. Left empty,
+          graduation still works exactly the same as a plain confirm. */}
+      <Modal
+        isOpen={graduateOpen}
+        onClose={() => {
+          setGraduateOpen(false)
+          setFinalMessage('')
+        }}
+        title="Graduate from this chat?"
+      >
+        <div className="flex flex-col gap-4">
+          <p className="text-body-sm text-navy-60">
+            This connection has meant something — closing it here is a good thing. You won&rsquo;t
+            be able to send new messages after this, but the conversation stays as a read-only
+            record.
+          </p>
+          <TextArea
+            rows={3}
+            maxLength={280}
+            value={finalMessage}
+            onChange={(e) => setFinalMessage(e.target.value)}
+            placeholder="Write a final message to them — optional"
+            aria-label="Final message"
+          />
+          <Button variant="primary" onClick={handleGraduateConfirm}>
+            Graduate
+          </Button>
+          <Button variant="ghost" onClick={() => { setGraduateOpen(false); setFinalMessage('') }}>
+            Not yet
+          </Button>
+        </div>
+      </Modal>
+
+      {/* Report — a safety/moderation exit. Reuses the reason-first,
+          destructive-submit shape from Ask's own report flow
+          (community/Chat.tsx), but the reason is required (not optional)
+          and submitting disconnects immediately rather than showing a "sent"
+          confirmation screen — there's nothing left to confirm from once
+          she's routed back into the matching flow. */}
+      <Sheet isOpen={reportOpen} onClose={closeReport} title="Report this Pal">
+        <div className="flex flex-col gap-4">
+          <p className="text-body-sm text-navy-60">
+            Let us know what&rsquo;s going on. This ends the connection right away — they
+            won&rsquo;t be able to reach you again, and you won&rsquo;t be matched with them again.
+          </p>
+          <TextArea
+            autoFocus
+            rows={4}
+            maxLength={280}
+            value={reportReason}
+            onChange={(e) => setReportReason(e.target.value)}
+            placeholder="What's going on?"
+            aria-label="Report reason"
+          />
+          <Button variant="destructive" disabled={!reportReason.trim()} onClick={handleSubmitReport}>
+            Submit report
+          </Button>
+          <Button variant="ghost" onClick={closeReport}>
+            Cancel
+          </Button>
+        </div>
+      </Sheet>
+
+      <Toast message={actionToast} isOpen={!!actionToast} />
     </div>
   )
 }

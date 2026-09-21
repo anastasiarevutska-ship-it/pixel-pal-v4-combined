@@ -43,19 +43,24 @@ export default function CommunityShell() {
       <div className="relative flex flex-col gap-5 p-5 pb-0">
         <GreetingHeader line1="Join the conversation," line2="Samantha!" />
 
-        <div className="flex gap-1 rounded-pill bg-white/70 p-1">
+        {/* Pill segmented control (reference design) — lavender-40 track,
+            active tab a raised white pill (shadow-xs), inactive tab plain/
+            quiet text on the track itself. One shared instance for both
+            routes (`onPixelPal` just flips which side is active), so Groups
+            and Peer Support can never drift apart in styling. */}
+        <div className="flex gap-1 rounded-pill bg-lavender-40 p-1">
           <Link
             to="/groups"
-            className={`flex-1 rounded-pill py-2 text-center text-body-sm-bold transition-colors ${
-              !onPixelPal ? 'bg-navy text-white' : 'text-navy-60'
+            className={`flex-1 rounded-pill py-3 text-center text-body-sm-bold transition-colors ${
+              !onPixelPal ? 'bg-white text-navy shadow-xs' : 'text-navy-40'
             }`}
           >
             Groups
           </Link>
           <Link
             to="/groups/pixel-pal"
-            className={`flex-1 rounded-pill py-2 text-center text-body-sm-bold transition-colors ${
-              onPixelPal ? 'bg-navy text-white' : 'text-navy-60'
+            className={`flex-1 rounded-pill py-3 text-center text-body-sm-bold transition-colors ${
+              onPixelPal ? 'bg-white text-navy shadow-xs' : 'text-navy-40'
             }`}
           >
             Peer Support

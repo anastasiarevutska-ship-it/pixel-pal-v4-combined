@@ -36,8 +36,8 @@ const mockGroups = [
 export default function GroupsTab() {
   return (
     <>
-      <p className="text-center text-h3 text-navy">You&rsquo;re not following any groups yet.</p>
-      <Button variant="secondary">Explore Groups</Button>
+      <p className="text-center text-screen-title text-navy">You&rsquo;re not following any groups yet.</p>
+      <Button variant="soft">Explore Groups</Button>
 
       <div className="flex flex-col gap-3">
         <p className="text-label-bold uppercase text-navy-60">Groups for you</p>

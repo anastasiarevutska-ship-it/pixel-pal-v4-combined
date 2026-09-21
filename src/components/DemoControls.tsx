@@ -24,6 +24,8 @@ export function DemoControls() {
   const simulateOtherSharesProfile = useDemoStore((s) => s.simulateOtherSharesProfile)
   const matchOutcomeDemo = useDemoStore((s) => s.matchOutcomeDemo)
   const setMatchOutcomeDemo = useDemoStore((s) => s.setMatchOutcomeDemo)
+  const homePromoDemo = useDemoStore((s) => s.homePromoDemo)
+  const setHomePromoDemo = useDemoStore((s) => s.setHomePromoDemo)
   const resetDemo = useDemoStore((s) => s.resetDemo)
 
   const myAsk = Object.values(asks).find((a) => a.authorId === ME_ID)
@@ -168,6 +170,28 @@ export function DemoControls() {
             >
               Pal entry
             </button>
+          </div>
+
+          <p className="mb-1 text-label-bold text-navy-60">HOME — promo card</p>
+          <div className="mb-3 flex flex-wrap gap-1.5">
+            {(
+              [
+                ['pixel_pal', 'Pixel Pal'],
+                ['peer_support', 'Peer Support'],
+                ['none', 'None'],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setHomePromoDemo(value)}
+                className={`rounded-field border px-3 py-1.5 text-label-bold ${
+                  homePromoDemo === value ? 'border-navy bg-navy text-white' : 'border-navy-20 text-navy'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
 
           <button

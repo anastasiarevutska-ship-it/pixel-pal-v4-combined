@@ -55,6 +55,14 @@ function XIcon() {
   )
 }
 
+function SendIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5" aria-hidden="true">
+      <path d="M3.105 2.288a.75.75 0 00-.826.95l1.414 4.925A1.5 1.5 0 005.135 9.25h6.115a.75.75 0 010 1.5H5.135a1.5 1.5 0 00-1.442 1.086l-1.414 4.926a.75.75 0 00.826.95 28.897 28.897 0 0015.293-7.155.75.75 0 000-1.114A28.897 28.897 0 003.105 2.288z" />
+    </svg>
+  )
+}
+
 function OverflowIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="text-navy">
@@ -138,6 +146,18 @@ export default function Chat() {
   const [pendingAttachmentType, setPendingAttachmentType] = useState<MockAttachment['type'] | null>(null)
 
   const convo = conversationId ? conversations[conversationId] : undefined
+  const messageRequests = useDemoStore((s) => s.messageRequests)
+  const acknowledgeAcceptedRequests = useDemoStore((s) => s.acknowledgeAcceptedRequests)
+
+  // Opening the chat clears its "new accepted request" markers (Peer Support
+  // card, nav dots) — however she got here, not just via that card.
+  useEffect(() => {
+    if (!convo?.askId) return
+    const ids = Object.values(messageRequests)
+      .filter((r) => r.askId === convo.askId && r.responderId === ME_ID && r.status === 'accepted')
+      .map((r) => r.id)
+    if (ids.length) acknowledgeAcceptedRequests(ids)
+  }, [convo?.askId, messageRequests, acknowledgeAcceptedRequests])
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: 'end' })
@@ -245,7 +265,7 @@ export default function Chat() {
   }
 
   return (
-    <div className="relative flex min-h-full flex-col">
+    <div className="relative flex h-full flex-col">
       {/* Header — identity reflects the reveal state, not a fixed name. */}
       <div className="flex items-center gap-3 border-b border-lavender-20 p-4">
         <button type="button" onClick={() => navigate(-1)} aria-label="Back" className="flex h-11 w-11 shrink-0 items-center justify-center">
@@ -274,7 +294,13 @@ export default function Chat() {
         </button>
       </div>
 
-      <div className="flex flex-col gap-4 p-4">
+      {/* Fixed, always-visible — never scrolls away with the conversation.
+          Same treatment as Pal chat's own top bar (see PixelPalChat.tsx). */}
+      <p className="border-b border-lavender-20 px-4 py-2 text-center text-label text-navy-60">
+        By chatting you agree to our <span className="underline">community guidelines</span>.
+      </p>
+
+      <div className="flex-1 overflow-y-auto flex flex-col gap-4 p-4">
         {/* Context strip — why these two are talking. Supporting context,
             not primary content, so a long original post clamps to ~2 lines
             with a "More" toggle rather than pushing the actual
@@ -351,6 +377,19 @@ export default function Chat() {
         </div>
       )}
 
+      {/* Quiet, persistent clinical-boundary affordance — fixed above the
+          composer, same as the top guidelines line and same purpose as Pal
+          chat's own footer link (see PixelPalChat.tsx). Available even when
+          read-only: Care Team access shouldn't depend on a conversation's
+          status. */}
+      <button
+        type="button"
+        onClick={() => navigate('/messages')}
+        className="border-t border-lavender-20 px-4 py-2 text-center text-label text-navy-60 hover:text-navy"
+      >
+        Need a nurse? Talk to your Care Team
+      </button>
+
       {isReadOnly ? (
         // Read-only record — graduated or blocked, either way nothing new
         // gets typed here again, so the composer itself is gone rather than
@@ -410,46 +449,55 @@ export default function Chat() {
               aria-label="Message"
             />
           </div>
-          <Button
-            variant="primary"
-            fullWidth={false}
-            disabled={!draft.trim() && !attachment}
+          <button
+            type="button"
             onClick={handleSend}
-            className="shrink-0"
+            aria-label="Send message"
+            disabled={!draft.trim() && !attachment}
+            className="flex h-11 w-11 shrink-0 items-center justify-center text-navy disabled:opacity-40"
           >
-            Send
-          </Button>
+            <SendIcon />
+          </button>
         </div>
       </div>
       )}
 
-      {/* Attachment picker — one control, one small menu, matching the same
-          card language as everything else in Peer Support rather than a
-          new upload UI. Demo/mocked selection only, see MockAttachment. */}
-      <Sheet isOpen={attachSheetOpen} onClose={() => setAttachSheetOpen(false)} title="Add to your message">
-        <div className="flex flex-col gap-2">
+      {/* Attachment picker — centered modal, matching the reference design
+          (not a bottom sheet). Demo/mocked selection only, see
+          MockAttachment. */}
+      <Modal
+        isOpen={attachSheetOpen}
+        onClose={() => setAttachSheetOpen(false)}
+        title="Attach a File"
+        className="bg-yellow-40"
+      >
+        <div className="flex flex-col gap-3">
           <button
             type="button"
             onClick={() => handlePickAttachment('image')}
-            className="flex items-center gap-3 rounded-card bg-lavender-20 p-3 text-left"
+            className="w-full rounded-pill bg-lavender-80 py-3 text-body-bold text-navy"
           >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-icon bg-lavender-40">
-              <ImageIcon />
-            </span>
-            <p className="text-body-sm-bold text-navy">Photo or video</p>
+            Image from Camera
+          </button>
+          <button
+            type="button"
+            onClick={() => handlePickAttachment('image')}
+            className="w-full rounded-pill bg-lavender-80 py-3 text-body-bold text-navy"
+          >
+            Image from Gallery
           </button>
           <button
             type="button"
             onClick={() => handlePickAttachment('file')}
-            className="flex items-center gap-3 rounded-card bg-lavender-20 p-3 text-left"
+            className="w-full rounded-pill bg-lavender-80 py-3 text-body-bold text-navy"
           >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-icon bg-lavender-40">
-              <FileIcon />
-            </span>
-            <p className="text-body-sm-bold text-navy">File</p>
+            Document
           </button>
+          <Button variant="outline" onClick={() => setAttachSheetOpen(false)}>
+            Cancel
+          </Button>
         </div>
-      </Sheet>
+      </Modal>
 
       {/* One-time privacy nudge — anonymous conversation, so attachments get
           a beat of friction the first time only (`reminderSeen`), never

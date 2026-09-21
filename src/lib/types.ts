@@ -97,8 +97,16 @@ export type ChatMessage = {
  * conversation no longer active. Ask's `acceptIncomingRequest`/
  * `simulateAskAuthorResponds`/`graduateConversation`/`blockPerson` never
  * produce this value.
+ *
+ * `reported` — Pal Auto Match only: a safety/moderation exit distinct from
+ * both `blocked` (Ask's own safety exit, which stays visible as a read-only
+ * record) and `ended`/`graduated` (both ordinary relationship endings that
+ * stay visible). A reported conversation must disappear from the reporting
+ * user's Messages entirely and never be reachable again — see
+ * `reportPalMatchConversation` in the store. Ask's actions never produce
+ * this value either.
  */
-export type ConversationStatus = 'active' | 'graduated' | 'blocked' | 'ended'
+export type ConversationStatus = 'active' | 'graduated' | 'blocked' | 'ended' | 'reported'
 
 /**
  * Only meaningful when `status === 'ended'` — why, distinct from the
@@ -143,4 +151,10 @@ export type Conversation = {
 
   /** Only set when `status === 'ended'` — see `ConversationEndedReason`. */
   endedReason?: ConversationEndedReason
+
+  /** Only set when `status === 'reported'` — the free-text reason she gave
+   * when reporting this Pal. Kept as the minimum internal record needed to
+   * represent the report; never surfaced in any UI (the conversation itself
+   * is no longer reachable once this is set). */
+  reportReason?: string
 }

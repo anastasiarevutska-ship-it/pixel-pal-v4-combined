@@ -8,6 +8,9 @@ type ModalProps = {
   onClose: () => void
   title?: string
   children: ReactNode
+  /** Overrides the content box's background (defaults to `bg-white`) — e.g.
+   * a caller matching a reference design with a tinted card. */
+  className?: string
 }
 
 /**
@@ -16,7 +19,7 @@ type ModalProps = {
  * always centers on the visible screen rather than the scrollable content
  * column behind it.
  */
-export function Modal({ isOpen, onClose, title, children }: ModalProps) {
+export function Modal({ isOpen, onClose, title, children, className }: ModalProps) {
   const prefersReducedMotion = useReducedMotion()
   const overlayNode = usePhoneOverlayNode()
 
@@ -36,7 +39,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
             role="dialog"
             aria-modal="true"
             aria-label={title}
-            className="relative z-10 w-full max-w-sm rounded-card bg-white p-5 shadow-card"
+            className={`relative z-10 w-full max-w-sm rounded-card p-5 shadow-card ${className ?? 'bg-white'}`}
             initial={{ opacity: 0, scale: prefersReducedMotion ? 1 : 0.96 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: prefersReducedMotion ? 1 : 0.96 }}

@@ -64,6 +64,12 @@ export default {
       // every other token in this file, this one has not been checked
       // against the real file. Correct it if that ever changes.
       'screen-title': ['32px', { lineHeight: '1.2', letterSpacing: '0px', fontWeight: '500' }],
+      // Library's own filter/tag chip label (Figma node 6143:26170,
+      // "Filters" component, PIXEL Care · "NEW Patient App" file) — extracted
+      // directly via the Figma MCP connector, not eyeballed. Named for the
+      // role (small bold tag label), same convention as every other token
+      // here.
+      'tag-bold': ['12px', { lineHeight: '13px', letterSpacing: '0.12px', fontWeight: '700' }],
     },
     boxShadow: {
       none: 'none',
@@ -86,6 +92,10 @@ export default {
       // corner-radius values in the component itself.
       frame: '52px', // outer bezel
       screen: '40px', // inner screen corners
+      // Library's own filter/tag chip corner (Figma node 6143:26170,
+      // "Filters" component) — sharper than `field`'s 12px, extracted via
+      // the Figma MCP connector rather than approximated.
+      tag: '4px',
     },
     extend: {
       fontFamily: {

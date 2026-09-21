@@ -28,6 +28,16 @@ import { useDemoStore } from '../../store/useDemoStore'
  *
  * No Back button, same as V2: the match is already created automatically by
  * the time she reaches this screen, so there's nothing here to reconsider.
+ *
+ * Known prototype limitation: this screen's card always shows River — it
+ * reads `palMatchPerson` directly rather than a matching result, since the
+ * demo has no roster of alternate candidates to choose from (see
+ * lib/seed.ts). If she's already reported him, `openPalMatchConversation`
+ * correctly refuses to reconnect her to the person she reported (see that
+ * action's own comment) — but this card still cosmetically shows his
+ * profile until she taps "Say hello" and lands on "No match yet" instead. A
+ * true fix needs a real multi-candidate matching pool, which is out of
+ * scope here.
  */
 export default function PixelPalMatchFound() {
   const navigate = useNavigate()
@@ -35,6 +45,10 @@ export default function PixelPalMatchFound() {
 
   function handleSayHello() {
     const conversationId = openPalMatchConversation()
+    if (!conversationId) {
+      navigate('/pixel-pal-match/no-match-yet')
+      return
+    }
     navigate(`/pixel-pal-match/chat/${conversationId}`)
   }
 

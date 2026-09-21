@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { useDemoStore } from '../store/useDemoStore'
+import { useDemoStore, unseenAcceptedRequests } from '../store/useDemoStore'
 import { ME_ID } from '../lib/seed'
 import iconNavHomeActive from '../assets/shared/icon-nav-home.svg'
 import iconNavHomeInactive from '../assets/shared/icon-nav-home-inactive.svg'
@@ -31,9 +31,12 @@ export function TabBar() {
   const { pathname } = useLocation()
   const asks = useDemoStore((s) => s.asks)
   const messageRequests = useDemoStore((s) => s.messageRequests)
+  const acknowledgedRequestIds = useDemoStore((s) => s.acknowledgedRequestIds)
+  const hasUnseenAccepted = unseenAcceptedRequests({ messageRequests, acknowledgedRequestIds }).length > 0
 
   // A quiet "something to check" dot on Groups: a pending request has
-  // arrived on one of my own open asks.
+  // arrived on one of my own open asks, or someone accepted one of mine
+  // (that also dots Messages, where the new chat lives).
   const myOpenAskIds = new Set(
     Object.values(asks)
       .filter((a) => a.authorId === ME_ID)
@@ -60,6 +63,7 @@ export function TabBar() {
       active: pathname.startsWith('/messages'),
       activeIcon: iconNavMessagesActive,
       inactiveIcon: iconNavMessagesInactive,
+      dot: hasUnseenAccepted,
     },
     { key: 'library', label: 'Library', icon: iconNavBook },
     {
@@ -68,7 +72,7 @@ export function TabBar() {
       to: '/groups',
       active: pathname.startsWith('/groups'),
       icon: iconNavCommunity,
-      dot: hasPendingOnMyAsk,
+      dot: hasPendingOnMyAsk || hasUnseenAccepted,
     },
   ]
 
