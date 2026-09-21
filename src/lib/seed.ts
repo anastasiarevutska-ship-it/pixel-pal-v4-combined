@@ -107,14 +107,35 @@ export const seedAsks: Ask[] = [
 // without repeating the same alias twice in one session.
 export const reserveResponders = ['p_reese', 'p_tal']
 
-// The Pal Auto Match fixture (ported from V2's `mockMatch`) — deliberately
+// The Pal Auto Match roster (River ported from V2's `mockMatch`) — deliberately
 // kept out of `people`/`reserveResponders` above, which are Ask's own
-// responder pool (`simulateIncomingRequest` draws from those two exports
-// directly). Pal Auto Match identity is never hidden, so unlike the Ask
-// roster this person needs no anonymous-avatar path at all.
-export const palMatchPerson: Person = {
-  id: 'p_river',
-  displayName: 'River',
-  alias: 'River',
-  aboutMe: 'Dog person, amateur baker, and always looking for a good series.',
-}
+// responder pool. Pal Auto Match identity is never hidden, so unlike the Ask
+// roster these people need no anonymous-avatar path at all. Several people so
+// "Find someone else" can actually produce someone new; matched in order, and
+// nobody is ever offered twice (see `palMatchCandidate` in the store).
+export const palMatchPeople: Person[] = [
+  {
+    id: 'p_river',
+    displayName: 'River',
+    alias: 'River',
+    aboutMe: 'Dog person, amateur baker, and always looking for a good series.',
+  },
+  {
+    id: 'p_ellis',
+    displayName: 'Ellis',
+    alias: 'Ellis',
+    aboutMe: 'Night-shift nurse, runs to clear my head, terrible at small talk but great at listening.',
+  },
+  {
+    id: 'p_ash',
+    displayName: 'Ash',
+    alias: 'Ash',
+    aboutMe: 'Plant collector and podcast addict. Happy to talk about anything except the waiting.',
+  },
+  {
+    id: 'p_quinn',
+    displayName: 'Quinn',
+    alias: 'Quinn',
+    aboutMe: 'Second time around. Coffee first, feelings second.',
+  },
+]

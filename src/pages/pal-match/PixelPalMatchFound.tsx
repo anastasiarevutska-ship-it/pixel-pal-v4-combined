@@ -2,18 +2,18 @@ import { useNavigate } from 'react-router-dom'
 import { Card } from '../../components/ui/Card'
 import { Avatar } from '../../components/ui/Avatar'
 import { Button } from '../../components/ui/Button'
-import { palMatchPerson } from '../../lib/seed'
-import { useDemoStore } from '../../store/useDemoStore'
+import { useEffect } from 'react'
+import { useDemoStore, palMatchCandidate } from '../../store/useDemoStore'
 
 /**
  * Pal Auto Match "Meet your Pixel Pal" — ported from V2's
  * `PixelPalMatchFound.tsx`. Deliberately minimal: one mocked profile, no
  * accept/decline, no comparison, no second match.
  *
- * `palMatchPerson` (River) comes straight from lib/seed.ts — the same
- * `Person` record used as a conversation participant, imported here
- * directly for display, matching V2's own pattern of reading its
- * `mockMatch` fixture directly rather than via a store selector.
+ * Shows whoever `palMatchCandidate` (store) says she'd be connected to: the
+ * next roster person she hasn't been matched with or reported before, so
+ * "Find someone else" really produces someone new. Once the roster runs out
+ * there is no candidate and she's sent to "No match yet".
  *
  * Phase 2B: "Say hello" now creates the persisted `pal_match` Conversation
  * and opens it. Unlike V2, this is a real, store-backed record, not
@@ -28,20 +28,19 @@ import { useDemoStore } from '../../store/useDemoStore'
  *
  * No Back button, same as V2: the match is already created automatically by
  * the time she reaches this screen, so there's nothing here to reconsider.
- *
- * Known prototype limitation: this screen's card always shows River — it
- * reads `palMatchPerson` directly rather than a matching result, since the
- * demo has no roster of alternate candidates to choose from (see
- * lib/seed.ts). If she's already reported him, `openPalMatchConversation`
- * correctly refuses to reconnect her to the person she reported (see that
- * action's own comment) — but this card still cosmetically shows his
- * profile until she taps "Say hello" and lands on "No match yet" instead. A
- * true fix needs a real multi-candidate matching pool, which is out of
- * scope here.
  */
 export default function PixelPalMatchFound() {
   const navigate = useNavigate()
   const openPalMatchConversation = useDemoStore((s) => s.openPalMatchConversation)
+  const conversations = useDemoStore((s) => s.conversations)
+  const blockedPersonIds = useDemoStore((s) => s.blockedPersonIds)
+  // The person Pal Auto Match would actually connect her to — a new one after
+  // "Find someone else", never a previous or reported Pal.
+  const match = palMatchCandidate({ conversations, blockedPersonIds })
+
+  useEffect(() => {
+    if (!match) navigate('/pixel-pal-match/no-match-yet', { replace: true })
+  }, [match, navigate])
 
   function handleSayHello() {
     const conversationId = openPalMatchConversation()
@@ -59,9 +58,9 @@ export default function PixelPalMatchFound() {
       <h2 className="text-h3">Meet your Pixel Pal</h2>
 
       <Card className="flex flex-col items-center gap-3 py-8 text-center">
-        <Avatar name={palMatchPerson.displayName} size="xl" />
-        <p className="text-h4 text-navy">{palMatchPerson.alias}</p>
-        {palMatchPerson.aboutMe && <p className="text-body-sm text-navy-60">{palMatchPerson.aboutMe}</p>}
+        <Avatar name={match?.displayName ?? ''} size="xl" />
+        <p className="text-h4 text-navy">{match?.alias}</p>
+        {match?.aboutMe && <p className="text-body-sm text-navy-60">{match.aboutMe}</p>}
       </Card>
 
       <p className="text-body text-navy-60">You have some treatment experience in common.</p>

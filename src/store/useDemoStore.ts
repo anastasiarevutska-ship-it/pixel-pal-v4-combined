@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { me, ME_ID, palMatchPerson, people, reserveResponders, seedAsks } from '../lib/seed'
+import { me, ME_ID, palMatchPeople, people, reserveResponders, seedAsks } from '../lib/seed'
 import type { Ask, ChatMessage, Conversation, ConversationStatus, MessageRequest, Person } from '../lib/types'
 
 let uid = 0
@@ -135,12 +135,32 @@ export function unseenAcceptedRequests(s: {
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
 }
 
+/** Who Pal Auto Match would offer right now: the partner of her active Pal if
+ * she has one, otherwise the first roster person she hasn't been matched with
+ * before (any earlier pal_match conversation — graduated, ended or reported)
+ * and hasn't reported/blocked. `undefined` once the roster runs out. */
+export function palMatchCandidate(s: {
+  conversations: Record<string, Conversation>
+  blockedPersonIds: string[]
+}): Person | undefined {
+  const palConvos = Object.values(s.conversations).filter(
+    (c) => c.origin === 'pal_match' && c.participantIds.includes(ME_ID),
+  )
+  const active = palConvos.find((c) => c.status === 'active')
+  if (active) {
+    const partnerId = active.participantIds.find((id) => id !== ME_ID)
+    return palMatchPeople.find((p) => p.id === partnerId)
+  }
+  const used = new Set(palConvos.flatMap((c) => c.participantIds))
+  return palMatchPeople.find((p) => !used.has(p.id) && !s.blockedPersonIds.includes(p.id))
+}
+
 function buildInitialState() {
   const asks: Record<string, Ask> = {}
   seedAsks.forEach((a) => (asks[a.id] = a))
   return {
     me,
-    people: { ...people, [palMatchPerson.id]: palMatchPerson },
+    people: { ...people, ...Object.fromEntries(palMatchPeople.map((p) => [p.id, p])) },
     asks,
     messageRequests: {} as Record<string, MessageRequest>,
     conversations: {} as Record<string, Conversation>,
@@ -325,25 +345,26 @@ export const useDemoStore = create<State>()(
           (c) => c.origin === 'pal_match' && c.status === 'active' && c.participantIds.includes(ME_ID),
         )
         if (existing) return existing.id
-        // The demo has exactly one Pal Auto Match fixture (River — see
-        // lib/seed.ts's `palMatchPerson`), no roster of alternate
-        // candidates. If she's reported him, honor "these two people can't
-        // be matched again" the only honest way available here: no
-        // candidate exists, so return no conversation rather than
-        // reconnecting her to the person she just reported. Callers (see
-        // PixelPalMatchFound) route this to the existing "No match yet"
-        // screen instead of a chat.
-        if (s.blockedPersonIds.includes(palMatchPerson.id)) return ''
+        // Never the same person twice, and never anyone she reported (see
+        // palMatchCandidate). No candidate left → no conversation, which
+        // callers route to the existing "No match yet" screen.
+        const candidate = palMatchCandidate(s)
+        if (!candidate) return ''
         const id = nextId('convo')
         const conversation: Conversation = {
           id,
           origin: 'pal_match',
-          participantIds: [ME_ID, palMatchPerson.id],
+          participantIds: [ME_ID, candidate.id],
           messages: [],
           status: 'active',
           createdAt: new Date().toISOString(),
         }
-        set((st) => ({ conversations: { ...st.conversations, [id]: conversation } }))
+        set((st) => ({
+          // Also (re)register the person: `people` may come from an older
+          // persisted demo that predates this roster entry.
+          people: { ...st.people, [candidate.id]: candidate },
+          conversations: { ...st.conversations, [id]: conversation },
+        }))
         return id
       },
 

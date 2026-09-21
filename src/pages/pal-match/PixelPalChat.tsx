@@ -133,6 +133,7 @@ export default function PixelPalChat() {
 
   const otherId = convo.participantIds.find((id) => id !== ME_ID)!
   const otherPerson = people[otherId]
+  const palName = otherPerson?.alias ?? otherPerson?.displayName ?? 'your Pal'
   const hasSentFirstMessage = convo.messages.some((m) => m.senderId === ME_ID)
   // Any non-active status means nothing new gets sent here again — rematch-
   // ended (`endPalMatchForRematch`) or graduated (`graduateConversation`,
@@ -471,17 +472,21 @@ export default function PixelPalChat() {
         title="Graduate from this chat?"
       >
         <div className="flex flex-col gap-4">
+          <div className="flex items-center gap-3 rounded-card bg-lavender-20 p-3">
+            <Avatar name={otherPerson?.displayName ?? 'Pixel Pal'} src={otherPerson?.avatarUrl} size="md" />
+            <p className="text-body-bold text-navy">{palName}</p>
+          </div>
           <p className="text-body-sm text-navy-60">
-            This connection has meant something — closing it here is a good thing. You won&rsquo;t
-            be able to send new messages after this, but the conversation stays as a read-only
-            record.
+            Your chat with {palName} has meant something &mdash; closing it here is a good thing. You
+            won&rsquo;t be able to send new messages after this, but the conversation stays as a
+            read-only record.
           </p>
           <TextArea
             rows={3}
             maxLength={280}
             value={finalMessage}
             onChange={(e) => setFinalMessage(e.target.value)}
-            placeholder="Write a final message to them — optional"
+            placeholder={`Write a final message to ${palName} — optional`}
             aria-label="Final message"
           />
           <Button variant="primary" onClick={handleGraduateConfirm}>
