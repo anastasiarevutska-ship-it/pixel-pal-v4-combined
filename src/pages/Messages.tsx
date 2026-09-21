@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { TabBar } from '../components/TabBar'
 import { CareTeamBlock } from '../components/CareTeamBlock'
@@ -8,6 +9,7 @@ import { Avatar } from '../components/ui/Avatar'
 import { AnonymousAvatar } from '../components/ui/AnonymousAvatar'
 import { useDemoStore } from '../store/useDemoStore'
 import { ME_ID } from '../lib/seed'
+import { relativeTime } from '../lib/relativeTime'
 import { anonymousPalLabels } from '../lib/palLabel'
 import type { Ask, Conversation, ConversationStatus, Person } from '../lib/types'
 import bgGlow from '../assets/shared/bg-glow.png'
@@ -22,10 +24,10 @@ function lastActivityAt(convo: Conversation): string {
   return lastMessage ? lastMessage.createdAt : convo.createdAt
 }
 
-// Read-only lifecycle states get a small, neutral label rather than being
-// hidden or redesigned into a different card treatment — see V4 direction
-// doc §5 ("smallest clear treatment", no Archive concept). Deliberately
-// silent for 'active': the ordinary case needs no badge at all.
+// Read-only lifecycle states get a small, neutral label in the row's
+// secondary line (and live under the collapsed "Past" section below) rather
+// than being deleted. Deliberately silent for 'active': the ordinary case
+// needs no badge at all.
 function conversationStatusLabel(status: ConversationStatus): string | undefined {
   if (status === 'graduated') return 'Graduated'
   if (status === 'blocked') return 'Blocked'
@@ -40,85 +42,73 @@ type ConversationRowProps = {
   askAnonLabel?: string
 }
 
+function ChevronRight() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0 text-navy-40">
+      <path d="m9 6 6 6-6 6" />
+    </svg>
+  )
+}
+
 /**
- * One row in the unified inbox. Origin determines both the identity/avatar
- * rule and which context is shown — an ask-origin row and a pal_match-origin
- * row deliberately don't carry the same metadata (V4 direction doc §7):
- * Ask shows the ask context it grew out of and respects its own anonymity/
- * reveal state; Pal Auto Match shows the always-revealed identity, a PIXEL
- * PAL marker, and a latest-message preview instead.
- *
- * A local component rather than an extracted shared file — Peer Support's
- * own "Your chats" list (the only other place that rendered a conversation
- * row) is removed in this same pass, so there is exactly one caller. Pull
- * this out again if a second real caller shows up.
+ * One compact row in the unified inbox: avatar, name, a single quiet
+ * secondary line, time and chevron — no message snippets or ask quotes, so
+ * ten-plus conversations stay scannable. Origin still decides identity: an
+ * ask-origin row respects its anonymity/reveal state (anonymous label +
+ * silhouette until profiles are mutually shared), a pal_match row always
+ * shows the real person. The secondary line says which kind of chat it is
+ * ("Pixel Pal" / "Peer chat"), plus the lifecycle status once it's past.
  */
 function ConversationRow({ conversation, people, asks, askAnonLabel }: ConversationRowProps) {
   const navigate = useNavigate()
   const otherId = conversation.participantIds.find((id) => id !== ME_ID)
   const otherPerson = otherId ? people[otherId] : undefined
   const statusLabel = conversationStatusLabel(conversation.status)
+  const isPal = conversation.origin === 'pal_match'
 
-  if (conversation.origin === 'pal_match') {
-    const lastMessage = conversation.messages[conversation.messages.length - 1]
-    return (
-      <button
-        type="button"
-        onClick={() => navigate(`/pixel-pal-match/chat/${conversation.id}`)}
-        className="flex items-start gap-3 rounded-card border border-lavender-40 bg-white p-3 text-left"
-      >
-        <Avatar name={otherPerson?.displayName ?? 'Pixel Pal'} src={otherPerson?.avatarUrl} size="sm" />
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <p className="truncate text-body-sm-bold text-navy">{otherPerson?.displayName ?? 'Pixel Pal'}</p>
-            <span className="shrink-0 rounded-pill bg-lavender-40 px-1.5 py-0.5 text-label-bold uppercase text-navy">
-              Pixel Pal
-            </span>
-            {statusLabel && <span className="shrink-0 text-label uppercase text-navy-40">{statusLabel}</span>}
-          </div>
-          {lastMessage && <p className="line-clamp-2 text-body-sm text-navy-60">{lastMessage.text}</p>}
-        </div>
-        <span className="shrink-0 self-center text-body-sm-bold text-navy">Open chat →</span>
-      </button>
+  let avatar
+  let name: string | undefined
+  let isNew = false
+  if (isPal) {
+    avatar = <Avatar name={otherPerson?.displayName ?? 'Pixel Pal'} src={otherPerson?.avatarUrl} size="sm" />
+    name = otherPerson?.displayName ?? 'Pixel Pal'
+  } else {
+    const bothShared = !!otherId && !!conversation.profileShared?.[ME_ID] && !!conversation.profileShared?.[otherId]
+    const seed = (conversation.askId ? asks[conversation.askId]?.anonSeed : undefined) ?? conversation.id.length
+    avatar = bothShared ? (
+      <Avatar name={otherPerson?.displayName ?? 'Pixel Pal'} src={otherPerson?.avatarUrl} size="sm" />
+    ) : (
+      <AnonymousAvatar seed={seed} size="sm" />
     )
+    name = bothShared ? otherPerson?.displayName : askAnonLabel
+    isNew = conversation.messages.length <= 1
   }
 
-  // Ask-origin — same identity/context rules as Ask's own feed and chat
-  // screens (see PixelPalFeedTab/Chat.tsx): anonymous until profiles are
-  // mutually shared, ask snippet kept as the "why we're talking" context.
-  const bothShared = !!otherId && !!conversation.profileShared?.[ME_ID] && !!conversation.profileShared?.[otherId]
-  const seed = (conversation.askId ? asks[conversation.askId]?.anonSeed : undefined) ?? conversation.id.length
-  const iAmAskAuthor = !!conversation.askId && asks[conversation.askId]?.authorId === ME_ID
-  const contextLabel = iAmAskAuthor ? 'Connected through your post' : 'You reached out about'
-  const isNew = conversation.messages.length <= 1
+  const kind = isPal ? 'Pixel Pal' : 'Peer chat'
+  const path = isPal
+    ? `/pixel-pal-match/chat/${conversation.id}`
+    : `/groups/pixel-pal/chat/${conversation.id}`
 
   return (
     <button
       type="button"
-      onClick={() => navigate(`/groups/pixel-pal/chat/${conversation.id}`)}
-      className="flex items-start gap-3 rounded-card border border-lavender-40 bg-white p-3 text-left"
+      onClick={() => navigate(path)}
+      className="flex items-center gap-3 rounded-card border border-lavender-40 bg-white px-3 py-2.5 text-left"
     >
-      {bothShared ? (
-        <Avatar name={otherPerson?.displayName ?? 'Pixel Pal'} src={otherPerson?.avatarUrl} size="sm" />
-      ) : (
-        <AnonymousAvatar seed={seed} size="sm" />
-      )}
+      {avatar}
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <p className="truncate text-body-sm-bold text-navy">
-            {bothShared ? otherPerson?.displayName : askAnonLabel}
-          </p>
+          <p className="truncate text-body-sm-bold text-navy">{name}</p>
           {isNew && (
             <span className="shrink-0 rounded-pill bg-lavender-40 px-1.5 py-0.5 text-label-bold uppercase text-navy">
               New
             </span>
           )}
-          {statusLabel && <span className="shrink-0 text-label uppercase text-navy-40">{statusLabel}</span>}
         </div>
-        <p className="text-label text-navy-40">{contextLabel}</p>
-        <p className="line-clamp-2 text-body-sm text-navy-60">“{conversation.askSnippet}”</p>
+        <p className="truncate text-label text-navy-60">{statusLabel ? `${kind} · ${statusLabel}` : kind}</p>
       </div>
-      <span className="shrink-0 self-center text-body-sm-bold text-navy">Open chat →</span>
+      <span className="shrink-0 text-label text-navy-40">{relativeTime(lastActivityAt(conversation))}</span>
+      <ChevronRight />
     </button>
   )
 }
@@ -147,6 +137,7 @@ export default function Messages() {
   const conversations = useDemoStore((s) => s.conversations)
   const asks = useDemoStore((s) => s.asks)
   const people = useDemoStore((s) => s.people)
+  const [pastOpen, setPastOpen] = useState(false)
 
   const myConversations = Object.values(conversations)
     .filter((c) => c.participantIds.includes(ME_ID))
@@ -155,6 +146,15 @@ export default function Messages() {
     // reportPalMatchConversation in the store).
     .filter((c) => c.status !== 'reported')
     .sort((a, b) => lastActivityAt(b).localeCompare(lastActivityAt(a)))
+  // Active chats first (her one active Pixel Pal pinned above peer chats),
+  // finished ones (graduated / ended / blocked) tucked into "Past" — nothing
+  // is deleted, just out of the way. Legacy chats with no `status` count as
+  // active, same as everywhere else.
+  const isPast = (c: Conversation) => c.status === 'graduated' || c.status === 'ended' || c.status === 'blocked'
+  const activeConversations = myConversations
+    .filter((c) => !isPast(c))
+    .sort((a, b) => Number(b.origin === 'pal_match') - Number(a.origin === 'pal_match'))
+  const pastConversations = myConversations.filter(isPast)
   // Ask-only numbering (see anonymousPalLabels) — a pal_match conversation
   // never consumes a slot here, same rule as everywhere else this is read.
   const askAnonLabels = anonymousPalLabels(Object.values(conversations), ME_ID)
@@ -206,10 +206,10 @@ export default function Messages() {
           </Card>
         )}
 
-        {myConversations.length > 0 && (
-          <div className="flex flex-col gap-3">
+        {activeConversations.length > 0 && (
+          <div className="flex flex-col gap-2">
             <p className="text-label-bold uppercase text-navy-60">Conversations</p>
-            {myConversations.map((convo) => (
+            {activeConversations.map((convo) => (
               <ConversationRow
                 key={convo.id}
                 conversation={convo}
@@ -218,6 +218,32 @@ export default function Messages() {
                 askAnonLabel={askAnonLabels[convo.id]}
               />
             ))}
+          </div>
+        )}
+
+        {pastConversations.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={() => setPastOpen((o) => !o)}
+              aria-expanded={pastOpen}
+              className="flex items-center gap-1 self-start text-label-bold uppercase text-navy-60"
+            >
+              Past ({pastConversations.length})
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={`transition-transform ${pastOpen ? 'rotate-180' : ''}`}>
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+            </button>
+            {pastOpen &&
+              pastConversations.map((convo) => (
+                <ConversationRow
+                  key={convo.id}
+                  conversation={convo}
+                  people={people}
+                  asks={asks}
+                  askAnonLabel={askAnonLabels[convo.id]}
+                />
+              ))}
           </div>
         )}
       </div>
