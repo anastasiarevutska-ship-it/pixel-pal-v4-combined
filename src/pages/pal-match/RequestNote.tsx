@@ -31,18 +31,18 @@ export default function RequestNote() {
   return (
     <div className="flex h-full flex-col p-5">
       <RequestStepHeader
-        step={1}
-        total={2}
         onBack={() => navigate('/pixel-pal-match/request/needs')}
+        onSkip={() => navigate('/pixel-pal-match/social-profile-preview')}
         title="Do you have a preference regarding location?"
       />
       <p className="mb-4 text-body-sm text-navy-60">
         Your location is never shown to your Pixel Pal.
       </p>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-col gap-3">
         {locationOptions.map((option) => (
           <Chip
             key={option.id}
+            variant="option"
             label={option.label}
             selected={preference === option.id}
             onClick={() => setPreference(option.id)}
@@ -50,7 +50,7 @@ export default function RequestNote() {
         ))}
       </div>
       <div className="mt-auto pt-6">
-        <Button variant="primary" onClick={() => navigate('/pixel-pal-match/social-profile-preview')}>
+        <Button variant="soft" onClick={() => navigate('/pixel-pal-match/social-profile-preview')}>
           Continue
         </Button>
       </div>

@@ -26,18 +26,18 @@ export default function RequestNeeds() {
   return (
     <div className="flex h-full flex-col p-5">
       <RequestStepHeader
-        step={0}
-        total={2}
         onBack={() => navigate('/pixel-pal-match/how-it-works')}
+        onSkip={() => navigate('/pixel-pal-match/social-profile-preview')}
         title="Would you prefer someone with similar treatment experience?"
       />
       <p className="mb-4 text-body-sm text-navy-60">
         We'll use this as a preference when looking for your Pixel Pal.
       </p>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-col gap-3">
         {preferenceOptions.map((option) => (
           <Chip
             key={option.id}
+            variant="option"
             label={option.label}
             selected={preference === option.id}
             onClick={() => setPreference(option.id)}
@@ -45,7 +45,7 @@ export default function RequestNeeds() {
         ))}
       </div>
       <div className="mt-auto pt-6">
-        <Button variant="primary" onClick={() => navigate('/pixel-pal-match/request/note')}>
+        <Button variant="soft" onClick={() => navigate('/pixel-pal-match/request/note')}>
           Continue
         </Button>
       </div>

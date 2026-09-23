@@ -1,4 +1,4 @@
-function ChevronLeft() {
+export function ChevronLeft() {
   return (
     <svg
       width="20"

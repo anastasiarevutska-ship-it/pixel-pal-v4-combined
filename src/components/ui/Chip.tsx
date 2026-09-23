@@ -1,4 +1,4 @@
-type ChipVariant = 'default' | 'filter'
+type ChipVariant = 'default' | 'filter' | 'option'
 
 type ChipProps = {
   label: string
@@ -22,6 +22,16 @@ const variantStyles: Record<ChipVariant, { shape: string; selectedColor: string;
     shape: 'min-h-11 gap-1.5 rounded-field border px-4 text-body-sm-bold',
     selectedColor: 'border-navy bg-navy text-white',
     unselectedColor: 'border-navy-20 bg-white text-navy hover:border-navy-40',
+  },
+  // Stacked, full-width preference option (Pal Auto Match onboarding
+  // reference) — same `field` radius/type as `default`, just block-level
+  // with a lavender resting border instead of `default`'s gray, so an
+  // unselected option still reads as an inviting purple pill rather than a
+  // disabled-looking gray outline.
+  option: {
+    shape: 'w-full min-h-11 gap-1.5 rounded-field border px-4 text-body-sm-bold',
+    selectedColor: 'border-navy bg-navy text-white',
+    unselectedColor: 'border-lavender bg-white text-navy hover:border-navy-40',
   },
   filter: {
     // `rounded-tag` (4px) and `text-tag-bold` (12px/13px line/0.12px

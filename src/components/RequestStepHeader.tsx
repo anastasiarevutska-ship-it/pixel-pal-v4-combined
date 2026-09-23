@@ -1,16 +1,15 @@
-import { ProgressDots } from './ui/ProgressDots'
+import { ChevronLeft } from './ui/ScreenHeader'
 
 type RequestStepHeaderProps = {
-  step: number
-  total: number
   onBack: () => void
+  onSkip: () => void
   title: string
 }
 
-/** Shared header for the Pal Auto Match preference steps — ported verbatim
- * from V2, where the same header was also shared with the (not ported here)
- * Pal application wizard. */
-export function RequestStepHeader({ step, total, onBack, title }: RequestStepHeaderProps) {
+/** Shared header for the Pal Auto Match preference steps — back icon button
+ * (same `rounded-icon` bg-lavender-40 chip as ScreenHeader) plus a Skip link,
+ * matching the reference onboarding screens. */
+export function RequestStepHeader({ onBack, onSkip, title }: RequestStepHeaderProps) {
   return (
     <div className="mb-6 flex flex-col gap-4">
       <div className="flex items-center justify-between">
@@ -18,12 +17,15 @@ export function RequestStepHeader({ step, total, onBack, title }: RequestStepHea
           type="button"
           onClick={onBack}
           aria-label="Back"
-          className="flex h-11 w-11 items-center justify-center text-h4 text-navy"
+          className="flex h-11 w-11 shrink-0 items-center justify-center"
         >
-          ←
+          <span className="flex h-8 w-8 items-center justify-center rounded-icon bg-lavender-40">
+            <ChevronLeft />
+          </span>
         </button>
-        <ProgressDots total={total} current={step} />
-        <span className="w-11" aria-hidden="true" />
+        <button type="button" onClick={onSkip} className="text-label-bold text-navy-60 hover:text-navy">
+          Skip
+        </button>
       </div>
       <h2 className="text-h3">{title}</h2>
     </div>
