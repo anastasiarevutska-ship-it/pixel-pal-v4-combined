@@ -5,7 +5,6 @@ import { ME_ID } from '../../lib/seed'
 import { Avatar } from '../../components/ui/Avatar'
 import { TextField } from '../../components/ui/TextField'
 import { Button } from '../../components/ui/Button'
-import { Sheet } from '../../components/ui/Sheet'
 import { Modal } from '../../components/ui/Modal'
 import { TextArea } from '../../components/ui/TextArea'
 import { Toast } from '../../components/ui/Toast'
@@ -62,6 +61,18 @@ function XIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M6 6l12 12M18 6 6 18" />
+    </svg>
+  )
+}
+
+// Same trigger glyph as Ask's own Chat.tsx (see that file's OverflowIcon) —
+// the two chat headers now share one visual language for "more options".
+function OverflowIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="text-navy">
+      <circle cx="5" cy="12" r="1.8" />
+      <circle cx="12" cy="12" r="1.8" />
+      <circle cx="19" cy="12" r="1.8" />
     </svg>
   )
 }
@@ -228,9 +239,10 @@ export default function PixelPalChat() {
         <button
           type="button"
           onClick={() => setMenuOpen(true)}
-          className="flex min-h-11 items-center gap-1 rounded-field px-3 text-body-sm-bold text-navy hover:bg-lavender-20"
+          aria-label="Conversation options"
+          className="flex h-11 w-11 shrink-0 items-center justify-center"
         >
-          Menu
+          <OverflowIcon />
         </button>
       </div>
 
@@ -409,41 +421,55 @@ export default function PixelPalChat() {
 
       {/* Relationship menu — symmetric, Pal Auto Match-only. Three
           fundamentally different relationship-ending outcomes, matching the
-          Ask chat's own Graduate/Block/Report menu in spirit (see
+          Ask chat's own Graduate/Report menu in spirit (see
           community/Chat.tsx): a positive close-out, a mismatch/rematch, and
           a safety exit must stay distinct actions, not collapse into one.
-          "Find someone else"/"Graduate" disabled once the conversation is
-          already closed — same convention as Ask's own Graduate/Block rows;
+          Yellow surface + solid pill buttons — the same "Attach a File"
+          pattern both chats already use, not a bottom sheet, so More menus
+          across the app share one visual language. "Find someone
+          else"/"Graduate" disabled once the conversation is already closed;
           Report stays available either way, also matching Ask. No "Pause" —
           it was a presentational-only placeholder ported from V2 with no
           real lifecycle meaning; removed rather than left as dead UI. */}
-      <Sheet isOpen={menuOpen} onClose={() => setMenuOpen(false)} title="Conversation">
-        <div className="flex flex-col gap-1">
-          <MenuRow
-            label="Find someone else"
+      <Modal isOpen={menuOpen} onClose={() => setMenuOpen(false)} title="Conversation" className="bg-yellow-40">
+        <div className="flex flex-col gap-3">
+          <button
+            type="button"
             disabled={isReadOnly}
             onClick={() => {
               setMenuOpen(false)
               setFindSomeoneElseOpen(true)
             }}
-          />
-          <MenuRow
-            label="Graduate"
+            className="w-full rounded-pill bg-lavender-80 py-3 text-body-bold text-navy disabled:opacity-40"
+          >
+            Find someone else
+          </button>
+          <button
+            type="button"
             disabled={isReadOnly}
             onClick={() => {
               setMenuOpen(false)
               setGraduateOpen(true)
             }}
-          />
-          <MenuRow
-            label="Report a concern"
+            className="w-full rounded-pill bg-lavender-80 py-3 text-body-bold text-navy disabled:opacity-40"
+          >
+            Graduate
+          </button>
+          <button
+            type="button"
             onClick={() => {
               setMenuOpen(false)
               setReportOpen(true)
             }}
-          />
+            className="w-full rounded-pill bg-lavender-80 py-3 text-body-bold text-navy"
+          >
+            Report a concern
+          </button>
+          <Button variant="outline" onClick={() => setMenuOpen(false)}>
+            Cancel
+          </Button>
         </div>
-      </Sheet>
+      </Modal>
 
       <Modal isOpen={findSomeoneElseOpen} onClose={() => setFindSomeoneElseOpen(false)} title="Find someone else?">
         <p className="mb-4 text-body-sm text-navy-60">
@@ -503,8 +529,9 @@ export default function PixelPalChat() {
           (community/Chat.tsx), but the reason is required (not optional)
           and submitting disconnects immediately rather than showing a "sent"
           confirmation screen — there's nothing left to confirm from once
-          she's routed back into the matching flow. */}
-      <Sheet isOpen={reportOpen} onClose={closeReport} title="Report this Pal">
+          she's routed back into the matching flow. Modal, not a sheet —
+          same "no bottom sheet" treatment as the menu above. */}
+      <Modal isOpen={reportOpen} onClose={closeReport} title="Report this Pal">
         <div className="flex flex-col gap-4">
           <p className="text-body-sm text-navy-60">
             Let us know what&rsquo;s going on. This ends the connection right away — they
@@ -526,22 +553,9 @@ export default function PixelPalChat() {
             Cancel
           </Button>
         </div>
-      </Sheet>
+      </Modal>
 
       <Toast message={actionToast} isOpen={!!actionToast} />
     </div>
-  )
-}
-
-function MenuRow({ label, onClick, disabled }: { label: string; onClick: () => void; disabled?: boolean }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className="flex min-h-11 items-center rounded-field px-3 text-left text-body-bold text-navy hover:bg-lavender-20 disabled:opacity-40"
-    >
-      {label}
-    </button>
   )
 }

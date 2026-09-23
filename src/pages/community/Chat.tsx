@@ -8,7 +8,6 @@ import { AnonymousAvatar } from '../../components/ui/AnonymousAvatar'
 import { Button } from '../../components/ui/Button'
 import { TextField } from '../../components/ui/TextField'
 import { Modal } from '../../components/ui/Modal'
-import { Sheet } from '../../components/ui/Sheet'
 import { TextArea } from '../../components/ui/TextArea'
 import { Toast } from '../../components/ui/Toast'
 
@@ -73,33 +72,6 @@ function OverflowIcon() {
   )
 }
 
-function GraduateIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="text-navy">
-      <circle cx="12" cy="12" r="9" />
-      <path d="m8 12.5 2.5 2.5 5.5-5.5" />
-    </svg>
-  )
-}
-
-function BlockIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="text-navy">
-      <circle cx="12" cy="12" r="9" />
-      <path d="m5.5 5.5 13 13" />
-    </svg>
-  )
-}
-
-function FlagIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="text-navy">
-      <path d="M6 21V4" />
-      <path d="M6 4h11l-2.5 4L17 12H6" />
-    </svg>
-  )
-}
-
 type MockAttachment = { type: 'image' | 'file'; name: string }
 
 /**
@@ -118,7 +90,6 @@ export default function Chat() {
   const sendMessage = useDemoStore((s) => s.sendMessage)
   const shareMyProfile = useDemoStore((s) => s.shareMyProfile)
   const graduateConversation = useDemoStore((s) => s.graduateConversation)
-  const blockPerson = useDemoStore((s) => s.blockPerson)
 
   const [draft, setDraft] = useState('')
   const [profileModalOpen, setProfileModalOpen] = useState(false)
@@ -130,7 +101,6 @@ export default function Chat() {
   // rest of this file's style (profileModalOpen, reminderOpen, …).
   const [menuOpen, setMenuOpen] = useState(false)
   const [graduateConfirmOpen, setGraduateConfirmOpen] = useState(false)
-  const [blockConfirmOpen, setBlockConfirmOpen] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
   const [reportStep, setReportStep] = useState<'write' | 'sent'>('write')
   const [reportDetails, setReportDetails] = useState('')
@@ -243,13 +213,6 @@ export default function Chat() {
     graduateConversation(convo.id)
     setGraduateConfirmOpen(false)
     flashToast('Conversation graduated — kept as a read-only record.')
-  }
-
-  function handleBlockConfirm() {
-    if (!convo) return
-    blockPerson(convo.id)
-    setBlockConfirmOpen(false)
-    flashToast('Blocked. You won’t hear from them again here.')
   }
 
   function closeReport() {
@@ -541,63 +504,42 @@ export default function Chat() {
 
       {/* Conversation options — chat management, not identity (that's "Share
           my profile" above, kept separate on purpose: it's about the
-          relationship progressing, not about managing the thread). Plain
-          rows, not cards — same icon-container treatment as the back button
-          and the composer's attach button (rounded-icon, lavender-40, navy
-          glyph) for all three, so nothing here reads as a separate UI
-          system or a featured action. A hairline divider between rows is
-          the only separation; Report gets no color treatment of its own —
-          this product doesn't use coral as an action color. */}
-      <Sheet isOpen={menuOpen} onClose={() => setMenuOpen(false)} title="Conversation options">
-        <div className="flex flex-col divide-y divide-lavender-20">
+          relationship progressing, not about managing the thread). Yellow
+          surface + solid pill buttons — the same "Attach a File" pattern
+          this chat already uses, not a bottom sheet, and the same treatment
+          Pal Auto Match's own menu uses (see pal-match/PixelPalChat.tsx), so
+          every chat's More menu now shares one visual language. Just two
+          actions here — no "Block": Report already covers the safety-exit
+          case, and duplicating it as a second, near-identical action added
+          a choice without a real difference. */}
+      <Modal isOpen={menuOpen} onClose={() => setMenuOpen(false)} title="Conversation" className="bg-yellow-40">
+        <div className="flex flex-col gap-3">
           <button
             type="button"
+            disabled={isReadOnly}
             onClick={() => {
               setMenuOpen(false)
               setGraduateConfirmOpen(true)
             }}
-            disabled={isReadOnly}
-            className="flex items-center gap-3 py-3 text-left disabled:opacity-40"
+            className="w-full rounded-pill bg-lavender-80 py-3 text-body-bold text-navy disabled:opacity-40"
           >
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-icon bg-lavender-40">
-              <GraduateIcon />
-            </span>
-            <div>
-              <p className="text-body-sm-bold text-navy">Graduate from chat</p>
-              <p className="text-label text-navy-60">Close this conversation when you're ready to move on.</p>
-            </div>
+            Graduate
           </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setMenuOpen(false)
-              setBlockConfirmOpen(true)
-            }}
-            disabled={isReadOnly}
-            className="flex items-center gap-3 py-3 text-left disabled:opacity-40"
-          >
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-icon bg-lavender-40">
-              <BlockIcon />
-            </span>
-            <p className="text-body-sm-bold text-navy">Block this person</p>
-          </button>
-
           <button
             type="button"
             onClick={() => {
               setMenuOpen(false)
               setReportOpen(true)
             }}
-            className="flex items-center gap-3 py-3 text-left"
+            className="w-full rounded-pill bg-lavender-80 py-3 text-body-bold text-navy"
           >
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-icon bg-lavender-40">
-              <FlagIcon />
-            </span>
-            <p className="text-body-sm-bold text-navy">Report conversation</p>
+            Report a concern
           </button>
+          <Button variant="outline" onClick={() => setMenuOpen(false)}>
+            Cancel
+          </Button>
         </div>
-      </Sheet>
+      </Modal>
 
       <Modal
         isOpen={graduateConfirmOpen}
@@ -618,25 +560,11 @@ export default function Chat() {
         </div>
       </Modal>
 
-      <Modal isOpen={blockConfirmOpen} onClose={() => setBlockConfirmOpen(false)} title="Block this person?">
-        <div className="flex flex-col gap-4">
-          <p className="text-body-sm text-navy-60">
-            They won't be able to reach you again, and this conversation becomes read-only. They
-            won't be notified that you blocked them.
-          </p>
-          <Button variant="destructive" onClick={handleBlockConfirm}>
-            Block this person
-          </Button>
-          <Button variant="ghost" onClick={() => setBlockConfirmOpen(false)}>
-            Cancel
-          </Button>
-        </div>
-      </Modal>
-
       {/* Report — mocked flow (see spec's "not built": no real reporting
           pipeline for this prototype), just enough to show the affordance
-          exists and where it lives. */}
-      <Sheet isOpen={reportOpen} onClose={closeReport} title={reportStep === 'write' ? 'Report this conversation' : undefined}>
+          exists and where it lives. Modal, not a sheet — same "no bottom
+          sheet" treatment as the menu above. */}
+      <Modal isOpen={reportOpen} onClose={closeReport} title={reportStep === 'write' ? 'Report this conversation' : undefined}>
         {reportStep === 'write' ? (
           <div className="flex flex-col gap-4">
             <p className="text-body-sm text-navy-60">
@@ -669,7 +597,7 @@ export default function Chat() {
             </Button>
           </div>
         )}
-      </Sheet>
+      </Modal>
 
       <Toast message={actionToast} isOpen={!!actionToast} />
     </div>
