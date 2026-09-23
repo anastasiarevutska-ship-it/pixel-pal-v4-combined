@@ -77,7 +77,11 @@ export function TabBar() {
   ]
 
   return (
-    <div className="flex items-start border-t border-lavender-20 bg-white px-2 pt-2">
+    // `sticky bottom-0` pins it to the bottom of PhoneFrame's scroll area
+    // while the page scrolls underneath; `mt-auto` still pushes it down on
+    // pages shorter than the screen. Must be a direct child of the page's
+    // full-height column — sticky only sticks within its parent's box.
+    <div className="sticky bottom-0 z-10 mt-auto flex items-start border-t border-lavender-20 bg-white px-2 pt-2">
       {tabs.map((tab) => {
         const isActive = tab.active ?? false
         const icon = tab.icon ?? (isActive ? tab.activeIcon : tab.inactiveIcon)

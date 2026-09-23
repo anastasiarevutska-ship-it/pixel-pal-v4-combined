@@ -72,9 +72,7 @@ export default function CommunityShell() {
         <Outlet />
       </div>
 
-      <div className="relative mt-auto">
-        <TabBar />
-      </div>
+      <TabBar />
     </div>
   )
 }

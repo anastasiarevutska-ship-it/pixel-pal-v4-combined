@@ -248,9 +248,7 @@ export default function Messages() {
         )}
       </div>
 
-      <div className="relative mt-auto">
-        <TabBar />
-      </div>
+      <TabBar />
     </div>
   )
 }

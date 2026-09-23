@@ -174,9 +174,7 @@ export default function HomeStub() {
         </div>
       </div>
 
-      <div className="relative mt-auto">
-        <TabBar />
-      </div>
+      <TabBar />
     </div>
   )
 }
