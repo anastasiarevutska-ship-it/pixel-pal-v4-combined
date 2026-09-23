@@ -62,6 +62,24 @@ function InfoIcon() {
   )
 }
 
+function ArrowRightIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.25"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M5 12h14M13 6l6 6-6 6" />
+    </svg>
+  )
+}
+
 function PinIcon() {
   return (
     <svg
@@ -284,59 +302,55 @@ export default function PixelPalFeedTab() {
           /* Once she has an active post, the onboarding hero (heading,
              explanation, CTA) has done its job and would just be repeating
              itself — replaced by "my post → its response status" instead.
-             Yellow 40, flat and borderless — the same quiet-note surface
-             this screen's own compose sheet already uses (see the privacy
-             hint below), not a card-shadow/white/lavender-border treatment,
-             so it reads as *her own, currently-open thing* rather than a
-             lavender community card (those are what the feed itself uses)
-             or a Lab Test-style appointment card (no icon, no event
-             chrome — this is a post, not a scheduled thing). `mb-2` on top
-             of the screen's own gap-6 is deliberate extra breathing room:
-             this card is the end of "my post," and the feed starting
-             directly after it should read as a clear new section, not a
-             continuation. */
+             Light bordered card with a soft shadow (Figma node
+             16903:80122), deliberately not lavender: the feed's own cards
+             are lavender, and this one is *hers*, so it shouldn't read as
+             just another post in that list. Extra top/bottom margin sets it
+             apart as its own section above the feed. */
           <Link
             to="/groups/pixel-pal/my-ask"
-            className="mb-2 flex flex-col gap-4 rounded-card bg-yellow-40 p-5"
+            className="mt-2 flex flex-col gap-2.5 rounded-field border border-navy-20 bg-gray20 px-6 py-3 shadow-card"
           >
-            <div className="flex flex-col gap-2">
-              <p className="text-label-bold uppercase text-navy-60">Your post</p>
+            <div className="flex flex-col gap-2.5">
+              <p className="text-caption uppercase text-navy-60">Your post</p>
               <p className="line-clamp-2 text-body text-navy-80">{displayedMyOpenAsk.text}</p>
             </div>
-            {/* Subtle divider, then a dedicated status area — reuses the
-                exact same request-state text/logic as before (see
-                pendingCount above), just given its own clearly separated
-                spot instead of sharing the snippet's own stack. */}
-            <div className="flex flex-col gap-0.5 border-t border-navy-20 pt-3">
-              {pendingCount > 0 ? (
-                <p className="text-body-sm-bold text-lavender">
-                  {pendingCount} message {pendingCount === 1 ? 'request' : 'requests'} →
-                </p>
-              ) : (
-                <>
-                  <p className="text-body-sm-bold text-navy-80">No requests yet</p>
-                  <p className="text-body-sm text-navy-60">We&rsquo;ll let you know when someone reaches out.</p>
-                </>
-              )}
+            {/* Status row — same request-state logic as before (see
+                pendingCount above), with the arrow as its own small
+                lavender chip on the right instead of inline "→" text. */}
+            <div className="flex items-center gap-3 border-t border-lavender-40 pt-2.5">
+              <div className="min-w-0 flex-1">
+                {pendingCount > 0 ? (
+                  <p className="text-body-bold text-navy-80">
+                    {pendingCount} message {pendingCount === 1 ? 'request' : 'requests'}
+                  </p>
+                ) : (
+                  <>
+                    <p className="text-body-bold text-navy-80">No requests yet</p>
+                    <p className="text-body-sm text-navy-60">We&rsquo;ll let you know when someone reaches out.</p>
+                  </>
+                )}
+              </div>
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-icon bg-lavender-40 text-navy">
+                <ArrowRightIcon />
+              </span>
             </div>
           </Link>
         ) : (
           <>
-            {/* Same centered, `text-screen-title`-weight hero treatment as
-                Groups' own empty state (see GroupsTab.tsx) — this is the
-                Community screen's shared hero pattern, not a Peer-Support-
-                specific one, so switching tabs shouldn't feel like landing
-                on a differently styled screen. */}
-            <div className="flex flex-col gap-1">
-              <h1 className="text-center text-screen-title text-navy">Share what's on your mind</h1>
-              <p className="text-center text-body text-navy-60">
+            {/* Lighter one-line hero (Figma node 16903:79103) — `h4`, not
+                the 32px `screen-title`, so the heading sits on a single
+                line above the explanation instead of wrapping. */}
+            <div className="flex flex-col gap-3 pt-4">
+              <h1 className="text-center text-h4 text-navy-80">Share what's on your mind</h1>
+              <p className="text-center text-body text-navy-80">
                 Share a question, worry, or experience anonymously — or reach out when someone
                 else's story resonates.
               </p>
             </div>
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 pt-3">
               <Button variant="soft" onClick={() => setComposeOpen(true)}>
-                Share with peers
+                Share With Peers
               </Button>
               {myLatestAsk && myLatestAsk.status === 'closed' && (
                 <Link
@@ -351,7 +365,9 @@ export default function PixelPalFeedTab() {
         )}
       </div>
 
-      <div className="flex flex-col gap-3">
+      {/* `mt-4` on top of the screen's gap-6 = the reference's 40px break
+          between whatever sits above (hero CTA or "Your post") and the feed. */}
+      <div className="mt-4 flex flex-col gap-3">
         {/* Main feed section label — `h5` (Library's own `RESOURCES`
             eyebrow size/weight, see tailwind.config.js's own note on
             where that token came from), not the small `label-bold` this
@@ -361,7 +377,7 @@ export default function PixelPalFeedTab() {
             can't keep reading as two headings of equal weight. */}
         <p className="text-h5 uppercase text-navy-80">What's on people's minds</p>
 
-        <div className="flex flex-col gap-2">
+        <div className="mb-2 flex flex-col gap-2">
           {/* "Filter by experience" mirrors Library's own "Related tags" —
               normal-case, `body-sm-bold`, clearly smaller/quieter than the
               section eyebrow above it. No standalone uppercase "EXPERIENCE"
@@ -395,20 +411,18 @@ export default function PixelPalFeedTab() {
         {visibleFeedAsks.map((ask) => {
           const outgoing = myOutgoingRequestFor(ask.id)
           return (
-            <div key={ask.id} className="flex flex-col gap-2 rounded-card bg-lavender-20 p-4">
-              <p className="text-body text-navy-80">{ask.text}</p>
+            <div key={ask.id} className="flex flex-col gap-3 rounded-card bg-lavender-20 p-3 shadow-card">
+              <p className="text-body text-navy">{ask.text}</p>
               <p className="text-label text-navy-40">{relativeTime(ask.createdAt)}</p>
               {!outgoing && (
                 <Button
-                  variant="secondary"
-                  fullWidth={false}
-                  className="self-start"
+                  variant="soft"
                   onClick={() => {
                     setRespondingAsk(ask)
                     setRespondStep('write')
                   }}
                 >
-                  Reach out
+                  Reach Out
                 </Button>
               )}
               {outgoing?.status === 'pending' && (

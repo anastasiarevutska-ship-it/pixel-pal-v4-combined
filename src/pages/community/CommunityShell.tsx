@@ -40,27 +40,27 @@ export default function CommunityShell() {
         className="pointer-events-none absolute inset-x-0 top-0 w-full [-webkit-mask-image:linear-gradient(to_bottom,black_0%,black_60%,transparent_100%)] [mask-image:linear-gradient(to_bottom,black_0%,black_60%,transparent_100%)]"
       />
 
-      <div className="relative flex flex-col gap-5 p-5 pb-0">
+      <div className="relative flex flex-col gap-12 p-5 pb-0">
         <GreetingHeader line1="Join the conversation," line2="Samantha!" />
 
-        {/* Pill segmented control (reference design) — lavender-40 track,
-            active tab a raised white pill (shadow-xs), inactive tab plain/
-            quiet text on the track itself. One shared instance for both
-            routes (`onPixelPal` just flips which side is active), so Groups
-            and Peer Support can never drift apart in styling. */}
-        <div className="flex gap-1 rounded-pill bg-lavender-40 p-1">
+        {/* Underline tabs (Figma node 16903:79103) — uppercase `h5`
+            eyebrow type, active tab marked by a lavender underline rather
+            than a raised pill. One shared instance for both routes
+            (`onPixelPal` just flips which side is active), so My Groups and
+            Peer Support can never drift apart in styling. */}
+        <div className="flex items-end justify-between">
           <Link
             to="/groups"
-            className={`flex-1 rounded-pill py-3 text-center text-body-sm-bold transition-colors ${
-              !onPixelPal ? 'bg-white text-navy shadow-xs' : 'text-navy-40'
+            className={`border-b-2 pb-2 text-h5 uppercase transition-colors ${
+              !onPixelPal ? 'border-lavender text-navy-80' : 'border-transparent text-navy-60'
             }`}
           >
-            Groups
+            My Groups
           </Link>
           <Link
             to="/groups/pixel-pal"
-            className={`flex-1 rounded-pill py-3 text-center text-body-sm-bold transition-colors ${
-              onPixelPal ? 'bg-white text-navy shadow-xs' : 'text-navy-40'
+            className={`border-b-2 pb-2 text-h5 uppercase transition-colors ${
+              onPixelPal ? 'border-lavender text-navy-80' : 'border-transparent text-navy-60'
             }`}
           >
             Peer Support
