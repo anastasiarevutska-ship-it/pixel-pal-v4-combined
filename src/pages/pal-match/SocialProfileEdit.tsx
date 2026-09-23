@@ -124,7 +124,7 @@ export default function SocialProfileEdit() {
             type="button"
             onClick={() => setAvatarSheetOpen(true)}
             aria-label="Change photo"
-            className="block rounded-pill"
+            className="block rounded-card"
           >
             <Avatar name={displayName || me.displayName} src={avatarUrl || undefined} size="xl" />
           </button>

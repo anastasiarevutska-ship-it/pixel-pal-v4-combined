@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../../components/ui/Button'
+import { Avatar } from '../../components/ui/Avatar'
 import { useEffect } from 'react'
 import { useDemoStore, palMatchCandidate } from '../../store/useDemoStore'
 import bgGlow from '../../assets/shared/bg-glow-warm.png'
@@ -20,15 +21,6 @@ function XIcon() {
       <path d="M6 6l12 12M18 6 6 18" />
     </svg>
   )
-}
-
-function initials(name: string) {
-  return name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join('')
 }
 
 /**
@@ -101,12 +93,7 @@ export default function PixelPalMatchFound() {
             <p className="mt-1 text-body text-navy-60">Meet your Pixel Pal.</p>
           </div>
 
-          <div
-            className="flex h-24 w-24 shrink-0 items-center justify-center rounded-card bg-lavender-40 text-h3 text-navy"
-            aria-hidden="true"
-          >
-            {initials(match?.displayName ?? '')}
-          </div>
+          <Avatar name={match?.displayName ?? ''} src={match?.avatarUrl} size="xl" />
 
           <div>
             <p className="text-h4 text-navy">{match?.alias}</p>

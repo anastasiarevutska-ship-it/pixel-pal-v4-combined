@@ -1,18 +1,10 @@
 import { useNavigate } from 'react-router-dom'
 import { ScreenHeader } from '../../components/ui/ScreenHeader'
 import { Card } from '../../components/ui/Card'
+import { Avatar } from '../../components/ui/Avatar'
 import { Button } from '../../components/ui/Button'
 import { useDemoStore } from '../../store/useDemoStore'
 import bgGlow from '../../assets/shared/bg-glow-warm.png'
-
-function initials(name: string) {
-  return name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join('')
-}
 
 // Standard Instagram glyph (rounded square + lens + flash dot), inline SVG —
 // ported as-is from V2, same reasoning: no icon library dependency here.
@@ -108,12 +100,7 @@ export default function SocialProfilePreview() {
         </div>
 
         <Card className="flex flex-col gap-3">
-          <div
-            className="flex h-16 w-16 shrink-0 items-center justify-center rounded-card bg-lavender-40 text-h4 text-navy"
-            aria-hidden="true"
-          >
-            {initials(me.displayName)}
-          </div>
+          <Avatar name={me.displayName} src={me.avatarUrl} size="lg" />
 
           <div>
             <p className="text-h4 text-navy">{me.displayName}</p>
