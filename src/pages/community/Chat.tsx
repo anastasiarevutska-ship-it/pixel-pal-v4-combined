@@ -8,8 +8,8 @@ import { AnonymousAvatar } from '../../components/ui/AnonymousAvatar'
 import { Button } from '../../components/ui/Button'
 import { TextField } from '../../components/ui/TextField'
 import { Modal } from '../../components/ui/Modal'
-import { TextArea } from '../../components/ui/TextArea'
 import { Toast } from '../../components/ui/Toast'
+import { ReportReasonScreen } from '../../components/ReportReasonScreen'
 
 function ChevronLeft() {
   return (
@@ -102,8 +102,7 @@ export default function Chat() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [graduateConfirmOpen, setGraduateConfirmOpen] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
-  const [reportStep, setReportStep] = useState<'write' | 'sent'>('write')
-  const [reportDetails, setReportDetails] = useState('')
+  const [reportSubmittedOpen, setReportSubmittedOpen] = useState(false)
   const [actionToast, setActionToast] = useState('')
 
   // Attachments — demo/mocked only, see handlePickAttachment. `reminderSeen`
@@ -215,16 +214,11 @@ export default function Chat() {
     flashToast('Conversation graduated — kept as a read-only record.')
   }
 
-  function closeReport() {
-    setReportOpen(false)
-    setReportStep('write')
-    setReportDetails('')
-  }
-
-  function handleSubmitReport() {
+  function handleSubmitReport(_reason: string) {
     // Prototype/mocked flow only — see spec's "not built": no real reporting
     // pipeline, just enough to show the affordance and its confirmation.
-    setReportStep('sent')
+    setReportOpen(false)
+    setReportSubmittedOpen(true)
   }
 
   return (
@@ -562,41 +556,21 @@ export default function Chat() {
 
       {/* Report — mocked flow (see spec's "not built": no real reporting
           pipeline for this prototype), just enough to show the affordance
-          exists and where it lives. Modal, not a sheet — same "no bottom
-          sheet" treatment as the menu above. */}
-      <Modal isOpen={reportOpen} onClose={closeReport} title={reportStep === 'write' ? 'Report this conversation' : undefined}>
-        {reportStep === 'write' ? (
-          <div className="flex flex-col gap-4">
-            <p className="text-body-sm text-navy-60">
-              Let us know what's going on. Our team reviews reports and can step in if needed —
-              this stays private between you and the team.
-            </p>
-            <TextArea
-              autoFocus
-              rows={4}
-              maxLength={280}
-              value={reportDetails}
-              onChange={(e) => setReportDetails(e.target.value)}
-              placeholder="What happened? (optional)"
-            />
-            <Button variant="destructive" onClick={handleSubmitReport}>
-              Submit report
-            </Button>
-            <Button variant="ghost" onClick={closeReport}>
-              Cancel
-            </Button>
+          exists and where it lives. Full-screen reason picker (matching the
+          reference, Figma node 16895:36686) plus a small confirmation card,
+          shared with Pal Auto Match's PixelPalChat.tsx. */}
+      <ReportReasonScreen isOpen={reportOpen} onBack={() => setReportOpen(false)} onSubmit={handleSubmitReport} />
+
+      <Modal isOpen={reportSubmittedOpen} onClose={() => setReportSubmittedOpen(false)}>
+        <div className="flex flex-col items-center gap-4 text-center">
+          <div>
+            <p className="text-body-bold text-navy">Your report has been submitted.</p>
+            <p className="mt-1 text-body-sm text-navy-60">This is the next step.</p>
           </div>
-        ) : (
-          <div className="flex flex-col gap-4">
-            <p className="text-h4">Report submitted ✓</p>
-            <p className="text-body-sm text-navy-60">
-              Thanks for letting us know. Our team will review this conversation.
-            </p>
-            <Button variant="primary" onClick={closeReport}>
-              Done
-            </Button>
-          </div>
-        )}
+          <Button variant="soft" onClick={() => setReportSubmittedOpen(false)}>
+            Close
+          </Button>
+        </div>
       </Modal>
 
       <Toast message={actionToast} isOpen={!!actionToast} />

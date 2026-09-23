@@ -8,6 +8,7 @@ import { Button } from '../../components/ui/Button'
 import { Modal } from '../../components/ui/Modal'
 import { TextArea } from '../../components/ui/TextArea'
 import { Toast } from '../../components/ui/Toast'
+import { ReportReasonScreen } from '../../components/ReportReasonScreen'
 
 const starters = [
   {
@@ -115,7 +116,7 @@ export default function PixelPalChat() {
   const [graduateOpen, setGraduateOpen] = useState(false)
   const [finalMessage, setFinalMessage] = useState('')
   const [reportOpen, setReportOpen] = useState(false)
-  const [reportReason, setReportReason] = useState('')
+  const [reportSubmittedOpen, setReportSubmittedOpen] = useState(false)
   const [actionToast, setActionToast] = useState('')
   const [attachSheetOpen, setAttachSheetOpen] = useState(false)
   const [attachment, setAttachment] = useState<MockAttachment | null>(null)
@@ -130,8 +131,12 @@ export default function PixelPalChat() {
   // 'reported' is deliberately treated the same as "doesn't exist" — a
   // reported conversation must be unreachable, not a read-only record (see
   // reportPalMatchConversation in the store). Hitting this URL directly
-  // after reporting must not restore access to it.
-  if (!convo || convo.status === 'reported') {
+  // after reporting must not restore access to it. `!reportSubmittedOpen`
+  // keeps this guard from firing mid-transition: reportPalMatchConversation
+  // flips the status the instant Send Report is tapped, before she's seen
+  // the "submitted" confirmation, and without that check this would swap
+  // the confirmation out from under her.
+  if (!convo || (convo.status === 'reported' && !reportSubmittedOpen)) {
     return (
       <div className="flex flex-col gap-4 p-5">
         <button type="button" onClick={() => navigate('/messages')} className="text-label-bold text-navy-60">
@@ -204,19 +209,21 @@ export default function PixelPalChat() {
     flashToast('Graduated — kept as a read-only record.')
   }
 
-  function closeReport() {
+  // Report — a safety/moderation exit, not a normal relationship ending.
+  // Disconnects right away (reportPalMatchConversation marks the
+  // conversation unreachable — see the store action and the `!convo ||
+  // status === 'reported'` guard above); the "submitted" confirmation is
+  // just an acknowledgment before she's routed back into the matching flow,
+  // not a step she can back out of.
+  function handleSubmitReport(reason: string) {
+    if (!convo) return
+    reportPalMatchConversation(convo.id, reason)
     setReportOpen(false)
-    setReportReason('')
+    setReportSubmittedOpen(true)
   }
 
-  // Report — a safety/moderation exit, not a normal relationship ending.
-  // Disconnects immediately: reportPalMatchConversation marks the
-  // conversation unreachable (see the store action and the `!convo ||
-  // status === 'reported'` guard above), so navigating straight back into
-  // the matching flow is correct — there's nothing left here to look at.
-  function handleSubmitReport() {
-    if (!convo || !reportReason.trim()) return
-    reportPalMatchConversation(convo.id, reportReason.trim())
+  function handleCloseReportSubmitted() {
+    setReportSubmittedOpen(false)
     navigate('/pixel-pal-match/finding')
   }
 
@@ -524,33 +531,21 @@ export default function PixelPalChat() {
         </div>
       </Modal>
 
-      {/* Report — a safety/moderation exit. Reuses the reason-first,
-          destructive-submit shape from Ask's own report flow
-          (community/Chat.tsx), but the reason is required (not optional)
-          and submitting disconnects immediately rather than showing a "sent"
-          confirmation screen — there's nothing left to confirm from once
-          she's routed back into the matching flow. Modal, not a sheet —
-          same "no bottom sheet" treatment as the menu above. */}
-      <Modal isOpen={reportOpen} onClose={closeReport} title="Report this Pal">
-        <div className="flex flex-col gap-4">
-          <p className="text-body-sm text-navy-60">
-            Let us know what&rsquo;s going on. This ends the connection right away — they
-            won&rsquo;t be able to reach you again, and you won&rsquo;t be matched with them again.
-          </p>
-          <TextArea
-            autoFocus
-            rows={4}
-            maxLength={280}
-            value={reportReason}
-            onChange={(e) => setReportReason(e.target.value)}
-            placeholder="What's going on?"
-            aria-label="Report reason"
-          />
-          <Button variant="destructive" disabled={!reportReason.trim()} onClick={handleSubmitReport}>
-            Submit report
-          </Button>
-          <Button variant="ghost" onClick={closeReport}>
-            Cancel
+      {/* Report — a safety/moderation exit. Full-screen reason picker
+          (matching the reference, Figma node 16895:36686) instead of the
+          old free-text-only modal, then a small confirmation card — this
+          ends the connection right away (reportPalMatchConversation), so
+          the confirmation is an acknowledgment, not a step to back out of. */}
+      <ReportReasonScreen isOpen={reportOpen} onBack={() => setReportOpen(false)} onSubmit={handleSubmitReport} />
+
+      <Modal isOpen={reportSubmittedOpen} onClose={handleCloseReportSubmitted}>
+        <div className="flex flex-col items-center gap-4 text-center">
+          <div>
+            <p className="text-body-bold text-navy">Your report has been submitted.</p>
+            <p className="mt-1 text-body-sm text-navy-60">This is the next step.</p>
+          </div>
+          <Button variant="soft" onClick={handleCloseReportSubmitted}>
+            Close
           </Button>
         </div>
       </Modal>
