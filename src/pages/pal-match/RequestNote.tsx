@@ -3,12 +3,13 @@ import { useNavigate } from 'react-router-dom'
 import { RequestStepHeader } from '../../components/RequestStepHeader'
 import { Chip } from '../../components/ui/Chip'
 import { Button } from '../../components/ui/Button'
+import bgGlow from '../../assets/shared/bg-glow-warm.png'
 
 type LocationPreference = 'outside_local_area' | 'no_preference'
 
 const locationOptions: { id: LocationPreference; label: string }[] = [
-  { id: 'outside_local_area', label: 'Yes, outside my local area' },
-  { id: 'no_preference', label: "No, location doesn't matter to me" },
+  { id: 'outside_local_area', label: 'Yes, outside my local area.' },
+  { id: 'no_preference', label: "No, location doesn't matter to me." },
 ]
 
 /**
@@ -29,30 +30,40 @@ export default function RequestNote() {
   const [preference, setPreference] = useState<LocationPreference | null>(null)
 
   return (
-    <div className="flex h-full flex-col p-5">
-      <RequestStepHeader
-        onBack={() => navigate('/pixel-pal-match/request/needs')}
-        onSkip={() => navigate('/pixel-pal-match/social-profile-preview')}
-        title="Do you have a preference regarding location?"
-      />
-      <p className="mb-4 text-body-sm text-navy-60">
-        Your location is never shown to your Pixel Pal.
-      </p>
-      <div className="flex flex-col gap-3">
-        {locationOptions.map((option) => (
-          <Chip
-            key={option.id}
-            variant="option"
-            label={option.label}
-            selected={preference === option.id}
-            onClick={() => setPreference(option.id)}
-          />
-        ))}
-      </div>
-      <div className="mt-auto pt-6">
-        <Button variant="soft" onClick={() => navigate('/pixel-pal-match/social-profile-preview')}>
-          Continue
-        </Button>
+    <div className="relative flex h-full flex-col">
+      <img src={bgGlow} alt="" aria-hidden="true" className="pointer-events-none absolute inset-0 h-full w-full object-cover" />
+
+      <div className="relative flex h-full flex-col p-5">
+        <RequestStepHeader
+          onBack={() => navigate('/pixel-pal-match/request/needs')}
+          onSkip={() => navigate('/pixel-pal-match/social-profile-preview')}
+        />
+
+        <div className="flex flex-1 flex-col justify-center gap-6">
+          <div className="text-center">
+            <h2 className="text-h3">Do you have a preference regarding location?</h2>
+            <p className="mt-3 text-body-sm text-navy-60">
+              Your location is never shown to your Pixel Pal.
+            </p>
+          </div>
+          <div className="flex flex-col gap-3">
+            {locationOptions.map((option) => (
+              <Chip
+                key={option.id}
+                variant="option"
+                label={option.label}
+                selected={preference === option.id}
+                onClick={() => setPreference(option.id)}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="pt-6">
+          <Button variant="soft" onClick={() => navigate('/pixel-pal-match/social-profile-preview')}>
+            Continue
+          </Button>
+        </div>
       </div>
     </div>
   )

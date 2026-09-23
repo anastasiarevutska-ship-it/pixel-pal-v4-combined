@@ -29,7 +29,7 @@ const variantStyles: Record<ChipVariant, { shape: string; selectedColor: string;
   // unselected option still reads as an inviting purple pill rather than a
   // disabled-looking gray outline.
   option: {
-    shape: 'w-full min-h-11 gap-1.5 rounded-field border px-4 text-body-sm-bold',
+    shape: 'w-full min-h-11 justify-center gap-1.5 rounded-field border px-4 text-body-sm-bold',
     selectedColor: 'border-navy bg-navy text-white',
     unselectedColor: 'border-lavender bg-white text-navy hover:border-navy-40',
   },

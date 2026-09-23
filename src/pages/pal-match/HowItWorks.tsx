@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { ChevronLeft } from '../../components/ui/ScreenHeader'
-import bgGlow from '../../assets/shared/bg-glow.png'
+import bgGlow from '../../assets/shared/bg-glow-warm.png'
 
 const cards = [
   "We'll connect you with someone who shares relevant experience",
@@ -12,9 +12,10 @@ const cards = [
 
 /**
  * Pal Auto Match · How it works — ported from V2's M2 (`HowItWorks.tsx`).
- * Three swipeable cards over the shared `bg-glow` warm gradient, with a
- * lavender icon back button and a plain-text Skip/Next, matching the
- * reference onboarding screens.
+ * Three swipeable cards over the reference's own warm gradient background
+ * (`bg-glow-warm.png`, exported from Figma — distinct from Home/Community's
+ * `bg-glow.png`), with a lavender icon back button and a plain-text
+ * Skip/Next, matching the reference onboarding screens.
  *
  * V2 called `startMemberFlow(memberId)` here to silently prefill her known
  * treatment record before the preference steps. V4 has no treatment-record
@@ -42,7 +43,7 @@ export default function HowItWorks() {
         src={bgGlow}
         alt=""
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 w-full [-webkit-mask-image:linear-gradient(to_bottom,black_0%,black_60%,transparent_100%)] [mask-image:linear-gradient(to_bottom,black_0%,black_60%,transparent_100%)]"
+        className="pointer-events-none absolute inset-0 h-full w-full object-cover"
       />
 
       <div className="relative flex h-full flex-col p-5">

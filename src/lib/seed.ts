@@ -16,9 +16,10 @@ export const me: Person = {
   // Ported from V2's seed (same Social Profile fields, same content) so the
   // Pal Auto Match Social Profile preview screen has something real to show
   // rather than an empty card.
-  signature: 'Two rounds of IVF down, still smiling most days.',
-  aboutMe: 'Denver-based, love hiking and terrible reality TV. Here for anyone who needs to vent at 2am.',
-  socialLinks: ['instagram.com/samantha.tries'],
+  signature: '1 IFV 2 IUI 1 mc',
+  aboutMe:
+    "Hey everyone! I'm 29 and was diagnosed with PCOS last year after months of trying to figure out why getting pregnant was taking longer than expected. I'm still pretty new to the fertility world and hoping to learn from others, share experiences, and feel a little less alone along the way.",
+  socialLinks: ['instagram.com/samantha.tries', 'x.com/samantha.tries', 'facebook.com/samantha.tries'],
 }
 
 function hoursAgo(h: number) {
@@ -118,7 +119,9 @@ export const palMatchPeople: Person[] = [
     id: 'p_river',
     displayName: 'River',
     alias: 'River',
-    aboutMe: 'Dog person, amateur baker, and always looking for a good series.',
+    signature: 'Went through 2 successful treatment cycles',
+    aboutMe:
+      "Hello! I am a 30-something that has been trying to conceive for the past three years. My husband and I have had no luck with IVF, but we're staying hopeful. Excited to connect with those on a similar path!",
   },
   {
     id: 'p_ellis',
