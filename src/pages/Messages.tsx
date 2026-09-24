@@ -208,7 +208,8 @@ export default function Messages() {
 
         {activeConversations.length > 0 && (
           <div className="flex flex-col gap-2">
-            <p className="text-label-bold uppercase text-navy-60">Conversations</p>
+            {/* Same eyebrow as CareTeamBlock's "How can we help you?" above. */}
+            <p className="text-center text-h5 uppercase text-navy-80">Conversations</p>
             {activeConversations.map((convo) => (
               <ConversationRow
                 key={convo.id}
