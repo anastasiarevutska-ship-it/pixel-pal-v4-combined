@@ -5,41 +5,36 @@ import { relativeTime } from '../../lib/relativeTime'
 import { AnonymousAvatar } from '../../components/ui/AnonymousAvatar'
 import { Button } from '../../components/ui/Button'
 import { EmptyState } from '../../components/ui/EmptyState'
+import { ScreenHeader } from '../../components/ui/ScreenHeader'
+import { TabBar } from '../../components/TabBar'
+import bgGlow from '../../assets/shared/bg-glow.png'
 
-function ChevronLeft() {
+function CloseIcon() {
   return (
     <svg
-      width="20"
-      height="20"
+      width="12"
+      height="12"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="2"
+      strokeWidth="2.5"
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
-      className="text-navy"
     >
-      <path d="M15 18l-6-6 6-6" />
+      <path d="M6 6l12 12M18 6 6 18" />
     </svg>
   )
 }
 
 /**
  * `/groups/pixel-pal/my-ask` — her own post, and every message request
- * against it (none, one, or several). Once she's opened this screen because
- * someone reached out, the requests are the reason she's here — her own
- * post is only context for *why* they did, so it's a compact, quiet
- * summary, not the hero of the screen. Accept ("Start chat") opens the
- * resulting private conversation immediately; decline stays private and
- * reasonless, same courtesy the other Pixel Pal prototypes use for the same
- * moment.
- *
- * Own header rather than the shared `ScreenHeader` primitive — that one's
- * the 32px sub-page convention matched from the client's own screenshots
- * (Medication Inventory, Prescriptions, …), which reads as too heavy for a
- * screen she's likely opening straight from a "1 message request" prompt.
- * This is a local, compact variant, not a change to that shared pattern.
+ * against it (none, one, or several), matched to the Figma "Your Post" frame
+ * (node 16913:93855): standard sub-page header over the Community glow, the
+ * full post in a white card with the close-post control beneath it, then the
+ * requests. Accept ("Start Chat") opens the resulting private conversation
+ * immediately; decline stays private and reasonless, same courtesy the other
+ * Pixel Pal prototypes use for the same moment.
  */
 export default function MyAsk() {
   const navigate = useNavigate()
@@ -62,147 +57,124 @@ export default function MyAsk() {
   const pending = requests.filter((r) => r.status === 'pending')
   const accepted = requests.filter((r) => r.status === 'accepted')
 
-  function handleBack() {
-    navigate('/groups/pixel-pal')
-  }
-
-  const header = (
-    <div className="flex items-center gap-3">
-      <button
-        type="button"
-        onClick={handleBack}
-        aria-label="Back"
-        className="flex h-11 w-11 shrink-0 items-center justify-center"
-      >
-        <span className="flex h-8 w-8 items-center justify-center rounded-icon bg-lavender-40">
-          <ChevronLeft />
-        </span>
-      </button>
-      <p className="text-h4 text-navy">Your post</p>
-    </div>
-  )
-
-  if (!myAsk) {
-    return (
-      <div className="flex flex-col gap-6 p-5">
-        {header}
-        <EmptyState title="No active post" description="Start a conversation from the Peer Support feed to see it here." />
-      </div>
-    )
-  }
-
   return (
-    <div className="flex flex-col gap-6 p-5">
-      {header}
+    <div className="relative flex min-h-full flex-col">
+      {/* Same masked Community glow as CommunityShell, so this reads as a
+          drill-down of Peer Support rather than a separate plain page. */}
+      <img
+        src={bgGlow}
+        alt=""
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 w-full [-webkit-mask-image:linear-gradient(to_bottom,black_0%,black_60%,transparent_100%)] [mask-image:linear-gradient(to_bottom,black_0%,black_60%,transparent_100%)]"
+      />
 
-      {/* Post-card and Message requests are grouped a little tighter than
-          the header→content gap above — still a clear break (this is
-          "why", that's "who"), just not as wide a jump as the rest of the
-          page's rhythm. */}
-      <div className="flex flex-col gap-4">
-        {/* Secondary context, not another content card — quiet neutral wash
-            (not white-with-border, which read as a form field) so the
-            incoming-request card below it is unmistakably the main event. */}
-        <div className="flex flex-col gap-1 rounded-card bg-navy-20/30 p-3">
-          <p className="text-label-bold uppercase text-navy-60">Your post · posted anonymously</p>
-          <p className="line-clamp-2 text-body-sm text-navy-80">{myAsk.text}</p>
-          {myAsk.status === 'open' ? (
-            <button
-              type="button"
-              onClick={() => closeAsk(myAsk.id)}
-              className="mt-2 self-start text-body-sm-bold text-navy underline-offset-4 hover:underline"
-            >
-              Close post
-            </button>
-          ) : (
-            <p className="text-label-bold uppercase text-navy-40">Closed to new responses</p>
-          )}
-        </div>
+      <div className="relative flex flex-col p-5">
+        <ScreenHeader title="Your Post" onBack={() => navigate('/groups/pixel-pal')} />
 
-        <div className="flex flex-col gap-3">
-          {/* Same section-label treatment as "What's on people's minds" /
-              "Groups for you" on the other Peer Support screens — the count
-              is a small lavender badge beside it, its own quiet element
-              (not `(N)` glued onto the heading) so it reads as a request
-              count, not a dashboard counter. */}
-          <div className="flex items-center gap-2">
-            <p className="text-label-bold uppercase text-navy-60">Message requests</p>
-            <span className="rounded-pill bg-lavender-40 px-2 py-0.5 text-label-bold text-navy">
-              {pending.length}
-            </span>
+        {!myAsk ? (
+          <div className="mt-6">
+            <EmptyState title="No active post" description="Start a conversation from the Peer Support feed to see it here." />
           </div>
+        ) : (
+          <>
+            <div className="mt-4 flex flex-col gap-4 rounded-field bg-white p-3 shadow-card">
+              <p className="text-body text-navy-80">{myAsk.text}</p>
+              <div className="flex flex-col gap-4 border-t border-lavender-40 pt-4">
+                {myAsk.status === 'open' ? (
+                  <>
+                    <p className="text-body-sm text-navy-60">
+                      You can close post and stop receiving message requests.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => closeAsk(myAsk.id)}
+                      className="flex items-center gap-3 self-start text-body-bold text-navy"
+                    >
+                      Close post
+                      <span className="flex h-6 w-6 items-center justify-center rounded-tag bg-lavender-40">
+                        <CloseIcon />
+                      </span>
+                    </button>
+                  </>
+                ) : (
+                  <p className="text-body-sm text-navy-60">
+                    This post is closed and no longer receives message requests.
+                  </p>
+                )}
+              </div>
+            </div>
 
-          {requests.length === 0 && (
-            <EmptyState
-              title="No one has reached out yet"
-              description="Check back soon — you'll see requests here as they come in."
-            />
-          )}
+            <p className="mt-8 text-h5 uppercase text-navy-80">Message requests</p>
 
-          {pending.map((request) => (
-            <div key={request.id} className="flex flex-col gap-3 rounded-card bg-lavender-20 p-4">
-              <div className="flex items-center gap-2">
-                <AnonymousAvatar seed={request.id.length} size="sm" />
-                <div>
-                  {/* "Someone reached out" — not "Anonymous" — is the
-                      headline; this is also where matching context (e.g.
-                      "Similar treatment experience") would slot in later,
-                      replacing this line rather than restructuring the
-                      card. */}
-                  <p className="text-body-sm-bold text-navy">Someone reached out</p>
-                  <p className="text-label text-navy-40">{relativeTime(request.createdAt)}</p>
+            <div className="mt-6 flex flex-col gap-6">
+              {requests.length === 0 && (
+                <EmptyState
+                  title="No one has reached out yet"
+                  description="Check back soon — you'll see requests here as they come in."
+                />
+              )}
+
+              {pending.map((request) => (
+                <div key={request.id} className="flex flex-col gap-4 rounded-card bg-lavender-20 p-3 shadow-card">
+                  <div className="flex items-center gap-3">
+                    <AnonymousAvatar seed={request.id.length} size="xs" />
+                    <p className="flex-1 text-body-sm-bold text-navy">Someone reached out</p>
+                    <p className="text-body-sm text-navy-40">{relativeTime(request.createdAt)}</p>
+                  </div>
+                  <p className="text-body-sm text-navy-80">{request.introMessage}</p>
+                  <div className="flex gap-3">
+                    <Button
+                      variant="soft-outline"
+                      fullWidth={false}
+                      className="flex-1"
+                      onClick={() => declineIncomingRequest(request.id)}
+                    >
+                      Decline
+                    </Button>
+                    <Button
+                      variant="soft"
+                      fullWidth={false}
+                      className="flex-1"
+                      onClick={() => {
+                        const convoId = acceptIncomingRequest(request.id)
+                        if (convoId) navigate(`/groups/pixel-pal/chat/${convoId}`)
+                      }}
+                    >
+                      Start Chat
+                    </Button>
+                  </div>
                 </div>
-              </div>
-              <p className="text-body text-navy-80">{request.introMessage}</p>
-              <div className="flex gap-3">
-                <Button
-                  variant="primary"
-                  fullWidth={false}
-                  className="flex-1"
-                  onClick={() => {
-                    const convoId = acceptIncomingRequest(request.id)
-                    if (convoId) navigate(`/groups/pixel-pal/chat/${convoId}`)
-                  }}
-                >
-                  Start chat
-                </Button>
-                <Button
-                  variant="ghost"
-                  fullWidth={false}
-                  className="flex-1"
-                  onClick={() => declineIncomingRequest(request.id)}
-                >
-                  Decline
-                </Button>
-              </div>
-            </div>
-          ))}
+              ))}
 
-          {accepted.length > 0 && (
-            <div className="flex flex-col gap-2">
-              <p className="text-label-bold uppercase text-navy-40">Ongoing</p>
-              {accepted.map((request) => {
-                const convo = Object.values(conversations).find(
-                  (c) => c.askId === myAsk.id && c.participantIds.includes(request.responderId),
-                )
-                if (!convo) return null
-                return (
-                  <button
-                    key={request.id}
-                    type="button"
-                    onClick={() => navigate(`/groups/pixel-pal/chat/${convo.id}`)}
-                    className="flex items-center gap-3 rounded-card bg-white p-3 text-left shadow-card"
-                  >
-                    <AnonymousAvatar seed={request.id.length} size="sm" />
-                    <p className="flex-1 text-body-sm-bold text-navy">Open chat</p>
-                    <span className="text-navy-40">→</span>
-                  </button>
-                )
-              })}
+              {accepted.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  <p className="text-label-bold uppercase text-navy-40">Ongoing</p>
+                  {accepted.map((request) => {
+                    const convo = Object.values(conversations).find(
+                      (c) => c.askId === myAsk.id && c.participantIds.includes(request.responderId),
+                    )
+                    if (!convo) return null
+                    return (
+                      <button
+                        key={request.id}
+                        type="button"
+                        onClick={() => navigate(`/groups/pixel-pal/chat/${convo.id}`)}
+                        className="flex items-center gap-3 rounded-card bg-white p-3 text-left shadow-card"
+                      >
+                        <AnonymousAvatar seed={request.id.length} size="xs" />
+                        <p className="flex-1 text-body-sm-bold text-navy">Open chat</p>
+                        <span className="text-navy-40">→</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </>
+        )}
       </div>
+
+      <TabBar />
     </div>
   )
 }

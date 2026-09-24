@@ -1,8 +1,9 @@
-type AnonymousAvatarSize = 'sm' | 'md' | 'lg'
+type AnonymousAvatarSize = 'xs' | 'sm' | 'md' | 'lg'
 
 // Same size-stepped soft-square radii as `Avatar`, so an anonymous stand-in
 // and the real avatar it later reveals into share one shape.
 const sizes: Record<AnonymousAvatarSize, string> = {
+  xs: 'h-6 w-6 rounded-tag', // 24px — inline in a card's header row (Figma "Your Post")
   sm: 'h-8 w-8 rounded-icon',
   md: 'h-11 w-11 rounded-field',
   lg: 'h-16 w-16 rounded-field',
