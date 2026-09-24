@@ -298,7 +298,7 @@ export default function PixelPalChat() {
                   key={starter.label}
                   type="button"
                   onClick={() => handleStarterTap(starter.message)}
-                  className="rounded-field border border-navy-20 bg-white px-3 py-2.5 text-left transition-colors hover:border-navy-40"
+                  className="rounded-field border border-lavender-40 bg-white px-3 py-2.5 text-left transition-colors hover:border-lavender"
                 >
                   <p className="text-label-bold uppercase text-navy-60">{starter.label}</p>
                   <p className="mt-0.5 text-body-sm text-navy">{starter.message}</p>

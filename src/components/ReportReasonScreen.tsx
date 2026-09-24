@@ -111,7 +111,7 @@ export function ReportReasonScreen({ isOpen, onBack, onSubmit }: ReportReasonScr
             <Button variant="soft" disabled={!canSubmit} onClick={handleSubmit}>
               Send Report
             </Button>
-            <Button variant="outline" onClick={handleBack}>
+            <Button variant="soft-outline" onClick={handleBack}>
               Cancel
             </Button>
           </div>

@@ -127,7 +127,7 @@ export default function SocialProfilePreview() {
           <Button variant="soft" onClick={() => navigate('/pixel-pal-match/social-profile-edit')}>
             Edit Social Profile
           </Button>
-          <Button variant="outline" onClick={() => navigate('/pixel-pal-match/finding')}>
+          <Button variant="soft-outline" onClick={() => navigate('/pixel-pal-match/finding')}>
             Looks Good
           </Button>
         </div>
