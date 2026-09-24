@@ -5,7 +5,6 @@ import { ME_ID } from '../../lib/seed'
 import { relativeTime } from '../../lib/relativeTime'
 import type { Ask, AskExperience } from '../../lib/types'
 import { getLocationContext } from '../../lib/location'
-import { AnonymousAvatar } from '../../components/ui/AnonymousAvatar'
 import { Button } from '../../components/ui/Button'
 import { Chip } from '../../components/ui/Chip'
 import { EmptyState } from '../../components/ui/EmptyState'
@@ -20,26 +19,6 @@ const EXPERIENCE_FILTERS: { value: AskExperience; label: string }[] = [
   { value: 'first_time', label: 'First treatment' },
   { value: 'been_through_it', label: 'Treated before' },
 ]
-
-function LockIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-      className="mt-0.5 shrink-0"
-    >
-      <rect x="4" y="10" width="16" height="10" rx="2" />
-      <path d="M8 10V7a4 4 0 0 1 8 0v3" />
-    </svg>
-  )
-}
 
 function InfoIcon() {
   return (
@@ -80,25 +59,6 @@ function ArrowRightIcon() {
   )
 }
 
-function PinIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-      className="mt-0.5 shrink-0"
-    >
-      <path d="M12 21s7-6.2 7-11a7 7 0 0 0-14 0c0 4.8 7 11 7 11Z" />
-      <circle cx="12" cy="10" r="2.5" />
-    </svg>
-  )
-}
 
 // Demo/prototype convenience only — not intended production UX. Real
 // patients would never have their composer silently pre-filled; this exists
@@ -441,33 +401,34 @@ export default function PixelPalFeedTab() {
         isOpen={composeOpen}
         onClose={closeCompose}
         title={composeStep === 'write' ? 'What would you like to talk about?' : undefined}
+        footer={
+          composeStep === 'write' ? (
+            <Button variant="soft" disabled={!askText.trim()} onClick={handlePostAsk}>
+              Post Anonymously
+            </Button>
+          ) : (
+            <Button variant="soft" onClick={closeCompose}>
+              Done
+            </Button>
+          )
+        }
       >
         {composeStep === 'write' ? (
-          <div className="flex flex-col gap-4">
+          /* Figma node 16913:93895 — tall muted field, then a single plain
+             privacy line (no yellow note box). */
+          <div className="mt-4 flex flex-col gap-4">
             <TextArea
               ref={askTextAreaRef}
-              rows={3}
+              tone="muted"
+              rows={7}
               maxLength={280}
               value={askText}
               onChange={(e) => setAskText(e.target.value)}
               onFocus={handleComposerFocus}
-              placeholder="Share what's been on your mind…"
+              placeholder="Share what's on your mind"
               className="resize-none overflow-hidden"
             />
-            {/* Same semantic yellow as the success screen's "What happens
-                next" (privacy / how-this-works guidance), but lighter still
-                — no heading, tighter padding — since here it's a secondary
-                note beside an empty textarea, not the main thing on screen. */}
-            <div className="flex flex-col gap-1 rounded-card bg-yellow-40 px-3 py-2">
-              <div className="flex items-start gap-2 text-body-sm text-navy">
-                <LockIcon />
-                <p>Your name and photo won't be shown.</p>
-              </div>
-              <p className="text-body-sm text-navy-60">People who relate can send you a private message request.</p>
-            </div>
-            <Button variant="primary" disabled={!askText.trim()} onClick={handlePostAsk}>
-              Post anonymously
-            </Button>
+            <p className="text-body-sm text-navy-60">Your name and photo won't be shown.</p>
           </div>
         ) : (
           <div className="flex flex-col gap-3">
@@ -497,10 +458,6 @@ export default function PixelPalFeedTab() {
                 </p>
               </div>
             </div>
-
-            <Button variant="primary" onClick={closeCompose}>
-              Done
-            </Button>
           </div>
         )}
       </Sheet>
@@ -510,40 +467,49 @@ export default function PixelPalFeedTab() {
         isOpen={!!respondingAsk}
         onClose={closeRespond}
         title={respondStep === 'write' ? 'Reach out privately' : undefined}
+        footer={
+          respondStep === 'write' ? (
+            <Button variant="soft" disabled={!introText.trim()} onClick={handleSendRequest}>
+              Send Message Request
+            </Button>
+          ) : (
+            <Button variant="soft-outline" onClick={closeRespond}>
+              Back to feed
+            </Button>
+          )
+        }
       >
         {respondingAsk && respondStep === 'write' && (
+          /* Figma node 16913:94001 — the quoted post as a plain lavender
+             card (no avatar), the muted field, then the privacy note and
+             location context as plain text beneath it (no yellow box). */
           <div className="flex flex-col gap-4">
-            <div className="flex items-start gap-2 rounded-card bg-lavender-20 p-3">
-              <AnonymousAvatar seed={respondingAsk.anonSeed} size="sm" />
-              <p className="text-body-sm text-navy-80">{respondingAsk.text}</p>
+            <div className="rounded-card bg-lavender-20 p-3 shadow-card">
+              <p className="text-body text-navy">{respondingAsk.text}</p>
             </div>
-
-            {/* Location context — a small privacy signal, not an
-                information card: tight padding, two short lines, no
-                warning language. Deliberately lighter than the quoted post
-                above (bg-lavender-20 p-3) and the message field below it. */}
-            {respondingLocationContext && (
-              <div className="flex items-start gap-1.5 rounded-card bg-yellow-40 px-3 py-1.5">
-                <PinIcon />
-                <p className="text-body-sm text-navy">
-                  <span className="text-body-sm-bold">{respondingLocationContext.title}</span>{' '}
-                  <span className="text-navy-60">{respondingLocationContext.body}</span>
-                </p>
-              </div>
-            )}
 
             <TextArea
               autoFocus
-              rows={4}
+              tone="muted"
+              rows={7}
               maxLength={280}
               value={introText}
               onChange={(e) => setIntroText(e.target.value)}
               placeholder="Share why this resonated with you, or how you can relate…"
-              helperText="They'll see this message and can choose to start a private chat. Your identity stays anonymous for now."
+              className="resize-none"
             />
-            <Button variant="primary" disabled={!introText.trim()} onClick={handleSendRequest}>
-              Send message request
-            </Button>
+
+            <div className="text-body-sm text-navy-60">
+              <p>They'll see this message and can choose to start a private chat. Your identity stays anonymous for now.</p>
+              {/* Never the other person's exact city — only how her own
+                  location relates to it (see lib/location.ts). */}
+              {respondingLocationContext && (
+                <p>
+                  <span className="text-body-sm-bold text-navy-80">{respondingLocationContext.title}.</span>{' '}
+                  {respondingLocationContext.body}
+                </p>
+              )}
+            </div>
           </div>
         )}
         {respondingAsk && respondStep === 'sent' && (
@@ -553,9 +519,6 @@ export default function PixelPalFeedTab() {
               They'll be notified and can choose to reply. If they accept, you'll see it here as a
               private chat.
             </p>
-            <Button variant="ghost" onClick={closeRespond}>
-              Back to feed
-            </Button>
           </div>
         )}
       </Sheet>
