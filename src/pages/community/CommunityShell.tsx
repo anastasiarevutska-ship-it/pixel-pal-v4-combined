@@ -40,18 +40,19 @@ export default function CommunityShell() {
         className="pointer-events-none absolute inset-x-0 top-0 w-full [-webkit-mask-image:linear-gradient(to_bottom,black_0%,black_60%,transparent_100%)] [mask-image:linear-gradient(to_bottom,black_0%,black_60%,transparent_100%)]"
       />
 
-      <div className="relative flex flex-col gap-12 p-5 pb-0">
+      <div className="relative flex flex-col gap-8 p-5 pb-0">
         <GreetingHeader line1="Join the conversation," line2="Samantha!" />
 
-        {/* Underline tabs (Figma node 16903:79103) — uppercase `h5`
-            eyebrow type, active tab marked by a lavender underline rather
-            than a raised pill. One shared instance for both routes
-            (`onPixelPal` just flips which side is active), so My Groups and
-            Peer Support can never drift apart in styling. */}
-        <div className="flex items-end justify-between">
+        {/* Underline tabs (Figma node 16903:80122) — two equal halves over a
+            full-width grey track; the active half's lavender underline
+            (`-mb-0.5`) sits on top of that track. Uppercase `h5` eyebrow
+            type, left-aligned in each half. One shared instance for both
+            routes (`onPixelPal` just flips which side is active), so My
+            Groups and Peer Support can never drift apart in styling. */}
+        <div className="flex border-b-2 border-navy-20">
           <Link
             to="/groups"
-            className={`border-b-2 pb-2 text-h5 uppercase transition-colors ${
+            className={`-mb-0.5 flex-1 whitespace-nowrap border-b-2 py-2.5 pl-2.5 text-h5 uppercase transition-colors ${
               !onPixelPal ? 'border-lavender text-navy-80' : 'border-transparent text-navy-60'
             }`}
           >
@@ -59,7 +60,7 @@ export default function CommunityShell() {
           </Link>
           <Link
             to="/groups/pixel-pal"
-            className={`border-b-2 pb-2 text-h5 uppercase transition-colors ${
+            className={`-mb-0.5 flex-1 whitespace-nowrap border-b-2 py-2.5 pl-2.5 text-h5 uppercase transition-colors ${
               onPixelPal ? 'border-lavender text-navy-80' : 'border-transparent text-navy-60'
             }`}
           >

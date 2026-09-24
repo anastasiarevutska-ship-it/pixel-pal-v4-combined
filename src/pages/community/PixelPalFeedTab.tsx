@@ -44,8 +44,8 @@ function InfoIcon() {
 function ArrowRightIcon() {
   return (
     <svg
-      width="16"
-      height="16"
+      width="14"
+      height="14"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -267,41 +267,32 @@ export default function PixelPalFeedTab() {
              are lavender, and this one is *hers*, so it shouldn't read as
              just another post in that list. Extra top/bottom margin sets it
              apart as its own section above the feed. */
-          <Link
-            to="/groups/pixel-pal/my-ask"
-            className="mt-2 flex flex-col gap-2.5 rounded-field border border-navy-20 bg-gray20 px-6 py-3 shadow-card"
-          >
-            <div className="flex flex-col gap-2.5">
-              <p className="text-caption uppercase text-navy-60">Your post</p>
+          <div className="mt-4 flex flex-col gap-4">
+            <p className="text-h5 uppercase text-navy-80">Your post</p>
+            <Link
+              to="/groups/pixel-pal/my-ask"
+              className="flex flex-col gap-2.5 rounded-field border border-navy-20 bg-gray20 px-6 py-3 shadow-card"
+            >
               <p className="line-clamp-2 text-body text-navy-80">{displayedMyOpenAsk.text}</p>
-            </div>
-            {/* Status row — same request-state logic as before (see
-                pendingCount above), with the arrow as its own small
-                lavender chip on the right instead of inline "→" text. */}
-            <div className="flex items-center gap-3 border-t border-lavender-40 pt-2.5">
-              <div className="min-w-0 flex-1">
-                {pendingCount > 0 ? (
-                  <p className="text-body-bold text-navy-80">
-                    {pendingCount} message {pendingCount === 1 ? 'request' : 'requests'}
-                  </p>
-                ) : (
-                  <>
-                    <p className="text-body-bold text-navy-80">No requests yet</p>
-                    <p className="text-body-sm text-navy-60">We&rsquo;ll let you know when someone reaches out.</p>
-                  </>
-                )}
+              {/* Status row — the request count (even at 0, per the
+                  Figma), darker once there's something waiting, with the
+                  arrow as a small lavender chip on the right. */}
+              <div className="flex items-center gap-3 border-t border-lavender-40 pt-2.5">
+                <p className={`flex-1 text-body-sm-bold ${pendingCount > 0 ? 'text-navy-80' : 'text-navy-60'}`}>
+                  {pendingCount} message {pendingCount === 1 ? 'request' : 'requests'}
+                </p>
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-tag bg-lavender-40 text-navy">
+                  <ArrowRightIcon />
+                </span>
               </div>
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-icon bg-lavender-40 text-navy">
-                <ArrowRightIcon />
-              </span>
-            </div>
-          </Link>
+            </Link>
+          </div>
         ) : (
           <>
             {/* Lighter one-line hero (Figma node 16903:79103) — `h4`, not
                 the 32px `screen-title`, so the heading sits on a single
                 line above the explanation instead of wrapping. */}
-            <div className="flex flex-col gap-3 pt-4">
+            <div className="mt-2.5 flex flex-col gap-3 pt-4">
               <h1 className="text-center text-h4 text-navy-80">Share what's on your mind</h1>
               <p className="text-center text-body text-navy-80">
                 Share a question, worry, or experience anonymously — or reach out when someone
